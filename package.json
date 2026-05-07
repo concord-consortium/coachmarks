@@ -32,7 +32,10 @@
     "dist"
   ],
   "sideEffects": [
-    "*.css"
+    "**/*.css",
+    "./src/index.ts",
+    "./dist/index.js",
+    "./dist/index.cjs"
   ],
   "exports": {
     ".": {
