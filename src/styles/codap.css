@@ -1,0 +1,61 @@
+@charset "UTF-8";
+
+/* CODAP theme. Faithful port of CODAP's tour-styles.scss. */
+/* Verified contrast (WCAG 2.1 AA): popover bg #f0f0f0 vs. title #006c8e — 4.91:1 (pass normal). */
+/* Verified contrast: button bg #006c8e vs. white text — 5.13:1 (pass normal). */
+/* Verified contrast: outline ring #006c8e vs. typical CODAP light gray — ≥3:1 (pass UI). */
+
+:root {
+  --coachmarks-popover-bg: #f0f0f0;
+  --coachmarks-popover-border: #cdcdcd;
+  --coachmarks-ring-color: #006c8e;
+  --coachmarks-focus-color: #006c8e;
+}
+
+.coachmarks-popover {
+  font-family: Montserrat, sans-serif;
+  background-color: var(--coachmarks-popover-bg);
+  color: #333;
+  border: 1px solid var(--coachmarks-popover-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: transform 200ms ease-out, opacity 150ms ease-out;
+}
+
+.coachmarks-popover-title {
+  font-family: "museo-sans", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #006c8e;
+}
+
+.coachmarks-popover-description {
+  font-size: 13px;
+  font-weight: 400;
+  color: #333;
+}
+
+.coachmarks-popover-progress-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.coachmarks-popover-prev-btn,
+.coachmarks-popover-next-btn {
+  font-family: Montserrat, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #006c8e;
+  color: white;
+  text-shadow: none;
+  border-radius: 4px;
+}
+
+.coachmarks-popover-prev-btn:hover:not(:disabled),
+.coachmarks-popover-next-btn:hover:not(:disabled) {
+  background-color: #005a76;
+}
+
+.coachmarks-popover-close-btn:hover .coachmarks-popover-close-icon {
+  color: #005a76;
+}

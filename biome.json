@@ -1,0 +1,17 @@
+{
+  "files": {
+    "ignore": [
+      "dist/**",
+      "dist-s3/**",
+      "node_modules/**",
+      "package.json",
+      "package-lock.json"
+    ]
+  },
+  "linter": { "enabled": true },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  }
+}

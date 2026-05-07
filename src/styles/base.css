@@ -1,0 +1,119 @@
+@charset "UTF-8";
+
+:root {
+  --coachmarks-focus-color: #0066cc;
+  --coachmarks-ring-color: #444444;
+  --coachmarks-z-index: 10001;
+  /* Outline ring sits one layer below the popover. Derived from --coachmarks-z-index so
+   * a consumer override of the popover z-index lifts the ring with it. */
+  --coachmarks-ring-z-index: calc(var(--coachmarks-z-index) - 1);
+}
+
+[data-testid="coachmarks-root"] {
+  position: static;
+}
+
+.coachmarks-popover {
+  position: fixed;
+  z-index: var(--coachmarks-z-index);
+  box-sizing: border-box;
+  max-width: 320px;
+}
+
+.coachmarks-popover:focus {
+  outline: none;
+}
+
+.coachmarks-popover-content {
+  padding: 12px;
+}
+
+/* padding-right reserves room at the top-right for the absolutely-positioned close
+ * button so a long title doesn't run under it. */
+.coachmarks-popover-title {
+  margin: 0 0 8px 0;
+  padding-right: 28px;
+}
+
+.coachmarks-popover--draggable {
+  cursor: grab;
+}
+
+/* Selectors below stack two classes so theme stylesheets that set `transition`
+ * on `.coachmarks-popover` (same specificity, loaded later) can't override the
+ * reduced-motion / dragging escape hatches by source order. */
+.coachmarks-popover.coachmarks-popover--dragging {
+  cursor: grabbing;
+  user-select: none;
+  transition: none;
+}
+
+.coachmarks-popover.coachmarks-popover--reduced-motion {
+  transition: none;
+}
+.coachmarks-popover-description {
+  margin: 0;
+  line-height: 1.5;
+}
+.coachmarks-popover-progress-text {
+  margin-top: 8px;
+}
+
+.coachmarks-popover-buttons {
+  margin-top: 8px;
+  display: flex;
+  gap: 4px;
+}
+
+.coachmarks-popover-prev-btn,
+.coachmarks-popover-next-btn {
+  border: none;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.coachmarks-popover-prev-btn:disabled,
+.coachmarks-popover-next-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.coachmarks-popover-prev-btn:focus-visible,
+.coachmarks-popover-next-btn:focus-visible,
+.coachmarks-popover-close-btn:focus-visible {
+  outline: 2px solid var(--coachmarks-focus-color, #0066cc);
+  outline-offset: 2px;
+}
+
+.coachmarks-popover-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.coachmarks-popover-close-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.coachmarks-popover-close-icon {
+  display: block;
+}
+
+.coachmarks-outline-ring {
+  position: fixed;
+  pointer-events: none;
+  border: 2px solid var(--coachmarks-ring-color);
+  border-radius: 4px;
+  z-index: var(--coachmarks-ring-z-index);
+  box-sizing: border-box;
+}

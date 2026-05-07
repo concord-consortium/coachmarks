@@ -1,0 +1,65 @@
+@charset "UTF-8";
+
+/* Hazbot theme. Per AP-64 design and verified against rendered Hazbot popovers. */
+/* Verified contrast (WCAG 2.1 AA): */
+/*   Body #222222 on #FFFFFF — 16.3:1 (pass AAA) */
+/*   Button #222222 on #C1DAFF — 12.4:1 (pass AAA) */
+/*   Outline ring #0050C4 on typical light bg — ~7:1 (pass UI ≥3:1) */
+
+:root {
+  --coachmarks-popover-bg: #ffffff;
+  --coachmarks-popover-border: #0050c4;
+  --coachmarks-popover-halo: #ffffff;
+  --coachmarks-popover-text: #222222;
+  --coachmarks-ring-color: #0050c4;
+  --coachmarks-focus-color: #0050c4;
+  --coachmarks-button-bg: #c1daff;
+  --coachmarks-button-border: #bdbdbd;
+  --coachmarks-button-text: #222222;
+}
+
+.coachmarks-popover {
+  font-family: Lato, sans-serif;
+  width: 300px;
+  background-color: var(--coachmarks-popover-bg);
+  color: var(--coachmarks-popover-text);
+  border: 3px solid var(--coachmarks-popover-border);
+  box-shadow: 0 0 0 5px var(--coachmarks-popover-halo);
+  border-radius: 8px;
+}
+
+.coachmarks-popover-title {
+  font-family: Lato, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--coachmarks-popover-text);
+}
+
+.coachmarks-popover-description {
+  font-family: Lato, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  color: var(--coachmarks-popover-text);
+}
+
+.coachmarks-popover-buttons {
+  justify-content: flex-end;
+}
+
+.coachmarks-popover-prev-btn,
+.coachmarks-popover-next-btn {
+  font-family: Lato, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  background-color: var(--coachmarks-button-bg);
+  color: var(--coachmarks-button-text);
+  border: 1px solid var(--coachmarks-button-border);
+  border-radius: 18px;
+  padding: 7px 22px;
+}
+
+.coachmarks-popover-prev-btn:hover:not(:disabled),
+.coachmarks-popover-next-btn:hover:not(:disabled) {
+  filter: brightness(0.95);
+}

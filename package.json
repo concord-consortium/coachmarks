@@ -1,0 +1,83 @@
+{
+  "name": "@concord-consortium/coachmarks",
+  "version": "0.0.1-pre.0",
+  "description": "Shared popover/pointer library for tour-style coachmarks across Concord Consortium apps.",
+  "keywords": [
+    "react",
+    "coachmark",
+    "tour",
+    "popover",
+    "highlight",
+    "onboarding",
+    "floating-ui"
+  ],
+  "author": "Doug Martin",
+  "license": "MIT",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/concord-consortium/coachmarks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/concord-consortium/coachmarks/issues"
+  },
+  "homepage": "https://github.com/concord-consortium/coachmarks#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./styles/codap": "./dist/styles/codap.css",
+    "./styles/hazbot": "./dist/styles/hazbot.css"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18",
+    "@floating-ui/react": "^0.27.0"
+  },
+  "dependencies": {
+    "clsx": "^2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1",
+    "@floating-ui/react": "^0.27.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.5.0",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^4",
+    "jsdom": "^29.0.1",
+    "lefthook": "^2.1.4",
+    "react": "^18",
+    "react-dom": "^18",
+    "tsup": "^8",
+    "typescript": "^5",
+    "vite": "^6",
+    "vitest": "^3"
+  },
+  "scripts": {
+    "build": "tsup && node scripts/copy-styles.mjs",
+    "demo": "vite serve demo",
+    "demo:build": "vite build demo --outDir ../dist-s3 --emptyOutDir --base ./",
+    "deploy:build": "npm run build && npm run demo:build",
+    "test": "vitest run",
+    "test:smoke": "npm run build && vitest run --config vitest.smoke.config.ts",
+    "lint": "biome lint .",
+    "format": "biome format .",
+    "check": "biome check . && tsc --noEmit",
+    "prepare": "(test -d .git && lefthook install) || true; npm run build"
+  }
+}
