@@ -2,7 +2,7 @@ import { type ReactNode, createContext, useContext, useMemo } from "react";
 import type { CreateCoachmarksEngineArgs } from "../src";
 import type { ThemeName } from "./theme-loader";
 
-type EngineDefaults = Pick<CreateCoachmarksEngineArgs, "arrow">;
+type EngineDefaults = Pick<CreateCoachmarksEngineArgs, "arrow" | "closeIcon">;
 
 const ThemeContext = createContext<{
   theme: ThemeName;
@@ -17,6 +17,17 @@ function defaultsFor(theme: ThemeName): EngineDefaults {
     // Hazbot's popover has a 3px border; match the arrow stroke so the tail
     // visually connects with the border at the same thickness.
     return { arrow: { strokeWidth: 3 } };
+  }
+  if (theme === "codap") {
+    // CODAP's tour plugin uses the multiplication-sign character for its close button.
+    return {
+      arrow: { strokeWidth: 1 },
+      closeIcon: (
+        <span className="coachmarks-popover-close-icon" aria-hidden="true">
+          ×
+        </span>
+      ),
+    };
   }
   return {};
 }

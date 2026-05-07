@@ -56,6 +56,22 @@
   background-color: #005a76;
 }
 
-.coachmarks-popover-close-btn:hover .coachmarks-popover-close-icon {
+.coachmarks-popover-close-btn {
+  all: unset;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 32px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 500;
+  color: #d2d2d2;
+  z-index: 1;
+  text-align: center;
+  transition: color 0.2s;
+}
+
+.coachmarks-popover-close-btn:hover {
   color: #005a76;
 }

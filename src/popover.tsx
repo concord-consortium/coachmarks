@@ -525,44 +525,46 @@ function PopoverContent({
               {popoverContent?.description}
             </p>
           )}
-          {isPrimary && opts.showProgress && kind === "tour" && (
-            <div
-              className="coachmarks-popover-progress-text"
-              data-testid="coachmarks-popover-progress-text"
-            >
-              {renderProgressText(
-                opts.progressText,
-                activeIndex + 1,
-                stepsLength,
-              )}
-            </div>
-          )}
           {isPrimary && (
             <div className="coachmarks-popover-buttons">
-              {showButtons.includes("previous") && !isFirst && (
-                <button
-                  type="button"
-                  className="coachmarks-popover-prev-btn"
-                  data-testid="coachmarks-popover-prev-btn"
-                  disabled={disabled.has("previous")}
-                  onClick={() => store.getSnapshot().movePrevious()}
+              {opts.showProgress && kind === "tour" && (
+                <div
+                  className="coachmarks-popover-progress-text"
+                  data-testid="coachmarks-popover-progress-text"
                 >
-                  {opts.prevBtnText ?? "Previous"}
-                </button>
+                  {renderProgressText(
+                    opts.progressText,
+                    activeIndex + 1,
+                    stepsLength,
+                  )}
+                </div>
               )}
-              {showButtons.includes("next") && (
-                <button
-                  type="button"
-                  className="coachmarks-popover-next-btn"
-                  data-testid="coachmarks-popover-next-btn"
-                  disabled={disabled.has("next")}
-                  onClick={() => store.getSnapshot().moveNext()}
-                >
-                  {isLast
-                    ? (opts.doneBtnText ?? "Done")
-                    : (opts.nextBtnText ?? "Next")}
-                </button>
-              )}
+              <div className="coachmarks-popover-button-group">
+                {showButtons.includes("previous") && !isFirst && (
+                  <button
+                    type="button"
+                    className="coachmarks-popover-prev-btn"
+                    data-testid="coachmarks-popover-prev-btn"
+                    disabled={disabled.has("previous")}
+                    onClick={() => store.getSnapshot().movePrevious()}
+                  >
+                    {opts.prevBtnText ?? "Previous"}
+                  </button>
+                )}
+                {showButtons.includes("next") && (
+                  <button
+                    type="button"
+                    className="coachmarks-popover-next-btn"
+                    data-testid="coachmarks-popover-next-btn"
+                    disabled={disabled.has("next")}
+                    onClick={() => store.getSnapshot().moveNext()}
+                  >
+                    {isLast
+                      ? (opts.doneBtnText ?? "Done")
+                      : (opts.nextBtnText ?? "Next")}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

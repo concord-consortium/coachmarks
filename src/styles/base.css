@@ -55,14 +55,26 @@
   margin: 0;
   line-height: 1.5;
 }
+
+/* When there's no title, the description is first and must reserve room for the close button. */
+.coachmarks-popover-description:first-child {
+  padding-right: 28px;
+}
 .coachmarks-popover-progress-text {
-  margin-top: 8px;
+  white-space: nowrap;
 }
 
 .coachmarks-popover-buttons {
   margin-top: 8px;
   display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.coachmarks-popover-button-group {
+  display: flex;
   gap: 4px;
+  margin-left: auto;
 }
 
 .coachmarks-popover-prev-btn,
@@ -87,11 +99,9 @@
 
 .coachmarks-popover-close-btn {
   position: absolute;
-  top: 12px;
-  right: 16px;
-  width: 24px;
-  height: 24px;
-  padding: 0;
+  top: 4px;
+  right: 4px;
+  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,6 +109,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  line-height: 1;
 }
 
 .coachmarks-popover-close-btn:focus:not(:focus-visible) {

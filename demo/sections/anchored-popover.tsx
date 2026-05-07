@@ -2,14 +2,19 @@ import { useRef, useState } from "react";
 import { type EngineHandle, createCoachmarksEngine } from "../../src";
 import { useEngineDefaults } from "../theme-context";
 
+type Variant = "with-title" | "without-title";
+
 export function AnchoredPopoverSection() {
-  const targetRef = useRef<HTMLButtonElement>(null);
+  const withTitleRef = useRef<HTMLButtonElement>(null);
+  const withoutTitleRef = useRef<HTMLButtonElement>(null);
   const engineRef = useRef<EngineHandle | null>(null);
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState<Variant | null>(null);
   const defaults = useEngineDefaults();
 
-  const trigger = () => {
-    if (!targetRef.current) return;
+  const trigger = (variant: Variant) => {
+    const target =
+      variant === "with-title" ? withTitleRef.current : withoutTitleRef.current;
+    if (!target) return;
     if (engineRef.current) {
       engineRef.current.destroy();
     }
@@ -18,33 +23,43 @@ export function AnchoredPopoverSection() {
       onCancelRequested: () => engine.destroy(),
       onDestroyed: () => {
         engineRef.current = null;
-        setActive(false);
+        setActive(null);
       },
     });
     engine.highlight({
-      element: targetRef.current,
+      element: target,
       popover: {
-        title: "Anchored popover",
+        ...(variant === "with-title" ? { title: "Anchored popover" } : {}),
         description: "This popover anchors to the button below.",
         side: "bottom",
         align: "center",
       },
     });
     engineRef.current = engine;
-    setActive(true);
+    setActive(variant);
   };
 
   return (
     <section>
       <h2>1. Anchored popover with arrow</h2>
-      <p>Click the button to anchor a popover.</p>
+      <p>Click a button to anchor a popover.</p>
       <button
-        ref={targetRef}
+        ref={withTitleRef}
         type="button"
         className="demo-target"
-        onClick={trigger}
+        onClick={() => trigger("with-title")}
       >
-        {active ? "(coachmark active)" : "Trigger coachmark"}
+        {active === "with-title" ? "(coachmark active)" : "Popup with title"}
+      </button>{" "}
+      <button
+        ref={withoutTitleRef}
+        type="button"
+        className="demo-target"
+        onClick={() => trigger("without-title")}
+      >
+        {active === "without-title"
+          ? "(coachmark active)"
+          : "Popup without title"}
       </button>
     </section>
   );
