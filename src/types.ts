@@ -7,6 +7,14 @@ export type AnchoredPopover = {
     description?: string;
     side?: "top" | "right" | "bottom" | "left";
     align?: "start" | "center" | "end";
+    /** Fixed popover width. Number → pixels; string → raw CSS value (e.g. "20rem").
+     *  Overrides the default `max-width: 320px` so larger values are honored. */
+    width?: number | string;
+    /** Cartesian shift applied to the popover's natural placement. Positive `x` = right;
+     *  positive `y` = down. Combines with the engine-level `popoverOffset` (which sets the
+     *  baseline gap between popover and anchor). Useful for fine-tuning a step that needs
+     *  to nudge clear of overlapping UI without changing `side`/`align`. */
+    anchorOffset?: { x?: number; y?: number };
   };
   /** Within a PopoverGroup, focus this popover on step entry instead of popovers[0]. First-set-wins
    *  if multiple popovers in a group set this. Has no effect on a bare-popover step. */
@@ -31,6 +39,17 @@ export type ViewportPopover = {
     description?: string;
     position: ViewportPosition;
     viewportOffset?: { x?: number; y?: number };
+    /** Fixed popover width. Number → pixels; string → raw CSS value (e.g. "20rem").
+     *  Overrides the default `max-width: 320px` so larger values are honored. */
+    width?: number | string;
+    /** Render a pointer arrow on one side of the popover, pointing away from it.
+     *  Visual styling (width/height/strokeWidth/path/tipRadius) is shared with anchored
+     *  popovers via the engine-level `arrow` option. `offset` shifts the arrow along the
+     *  chosen edge (positive = toward right/bottom; negative = toward left/top). */
+    arrow?: {
+      side: "top" | "right" | "bottom" | "left";
+      offset?: number;
+    };
   };
   initialFocus?: boolean;
 };

@@ -27,6 +27,7 @@ import { scrollTargetIntoView } from "./scroll-into-view";
 import { type Store, useStore } from "./store";
 import type {
   AnchoredPopover,
+  EngineOptions,
   PopoverSpec,
   ViewportPopover,
   ViewportPosition,
@@ -67,6 +68,30 @@ interface PopoverContentProps {
 
 function isAnchored(spec: PopoverSpec): spec is AnchoredPopover {
   return spec.element != null;
+}
+
+/** Maps a cartesian (x = right, y = down) anchor offset to floating-ui's
+ *  mainAxis (away from anchor along the placement direction) and crossAxis
+ *  (perpendicular) for the resolved placement. Exported for unit testing. */
+export function cartesianToAxisOffset(
+  baseOffset: number,
+  placement: Placement,
+  ax: number,
+  ay: number,
+): { mainAxis: number; crossAxis?: number } {
+  const side = placement.split("-")[0];
+  switch (side) {
+    case "top":
+      return { mainAxis: baseOffset - ay, crossAxis: ax };
+    case "bottom":
+      return { mainAxis: baseOffset + ay, crossAxis: ax };
+    case "left":
+      return { mainAxis: baseOffset - ax, crossAxis: ay };
+    case "right":
+      return { mainAxis: baseOffset + ax, crossAxis: ay };
+    default:
+      return { mainAxis: baseOffset };
+  }
 }
 
 function computeUserPlacement(
@@ -147,6 +172,119 @@ function viewportPositionStyles(
     default:
       return base;
   }
+}
+
+// Visual port of @floating-ui/react's FloatingArrow for viewport popovers, which have
+// no floating-ui context to drive the real component. Same default path, same fill/stroke
+// CSS variables, same strokeWidth-doubling and base-stroke-clipping tricks — so the arrow
+// looks identical to the anchored variant. No halo path here: the popover's wrapping
+// `filter: drop-shadow` traces the combined silhouette (popover rectangle + arrow V) and
+// produces the halo around the arrow automatically.
+
+interface ViewportArrowProps {
+  side: "top" | "right" | "bottom" | "left";
+  offset: number;
+  arrowOpts: EngineOptions["arrow"];
+}
+
+function ViewportArrow({ side, offset, arrowOpts }: ViewportArrowProps) {
+  const width = arrowOpts?.width ?? 14;
+  const height = arrowOpts?.height ?? 7;
+  const tipRadius = arrowOpts?.tipRadius ?? 0;
+  const strokeWidth = arrowOpts?.strokeWidth ?? 1;
+  const customD = arrowOpts?.path;
+  const clipPathId = useId();
+
+  const computedStrokeWidth = strokeWidth * 2;
+  const halfStrokeWidth = computedStrokeWidth / 2;
+  const svgX = (width / 2) * (tipRadius / -8 + 1);
+  const svgY = ((height / 2) * tipRadius) / 4;
+  const isCustomShape = !!customD;
+  const isVerticalSide = side === "top" || side === "bottom";
+
+  const dValue =
+    customD ??
+    `M0,0 H${width} L${width - svgX},${height - svgY} Q${width / 2},${height} ${svgX},${height - svgY} Z`;
+
+  // FloatingArrow's default path points DOWN. For our user-facing `side` (the edge the
+  // arrow protrudes from / points away from), pick the rotation that orients the tip
+  // outward: top → up, bottom → down (no rotation), left → left, right → right.
+  const rotation = {
+    top: isCustomShape ? "" : "rotate(180deg)",
+    bottom: isCustomShape ? "rotate(180deg)" : "",
+    left: isCustomShape ? "rotate(-90deg)" : "rotate(90deg)",
+    right: isCustomShape ? "rotate(90deg)" : "rotate(-90deg)",
+  }[side];
+
+  // Vertical sides: arrow flush with edge (top/bottom: 100%). Horizontal sides: inset
+  // by halfStrokeWidth so the second-path stroke can hide the popover's own border.
+  const edgeOffset =
+    isVerticalSide || isCustomShape
+      ? "100%"
+      : `calc(100% - ${halfStrokeWidth}px)`;
+
+  const svgWidth = isCustomShape ? width : width + computedStrokeWidth;
+  const halfSvgWidth = svgWidth / 2;
+
+  const style: CSSProperties = {
+    position: "absolute",
+    pointerEvents: "none",
+    transform: rotation,
+  };
+  if (side === "top") {
+    style.bottom = edgeOffset;
+    style.left = `calc(50% - ${halfSvgWidth}px + ${offset}px)`;
+  } else if (side === "bottom") {
+    style.top = edgeOffset;
+    style.left = `calc(50% - ${halfSvgWidth}px + ${offset}px)`;
+  } else if (side === "left") {
+    style.right = edgeOffset;
+    style.top = `calc(50% - ${width / 2}px + ${offset}px)`;
+  } else {
+    style.left = edgeOffset;
+    style.top = `calc(50% - ${width / 2}px + ${offset}px)`;
+  }
+
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      className={`coachmarks-popover-arrow-side-${side}`}
+      width={svgWidth}
+      height={width}
+      viewBox={`0 0 ${width} ${height > width ? height : width}`}
+      style={style}
+    >
+      <defs>
+        <clipPath id={clipPathId}>
+          <rect
+            x={-halfStrokeWidth}
+            y={halfStrokeWidth * (isCustomShape ? -1 : 1)}
+            width={width + computedStrokeWidth}
+            height={width}
+          />
+        </clipPath>
+      </defs>
+      {computedStrokeWidth > 0 && (
+        <path
+          clipPath={`url(#${clipPathId})`}
+          fill="none"
+          stroke="var(--coachmarks-popover-border)"
+          strokeWidth={computedStrokeWidth + (customD ? 0 : 1)}
+          d={dValue}
+        />
+      )}
+      <path
+        fill="var(--coachmarks-popover-bg)"
+        stroke={
+          computedStrokeWidth && !customD
+            ? "var(--coachmarks-popover-bg)"
+            : "none"
+        }
+        d={dValue}
+      />
+    </svg>
+  );
 }
 
 function PopoverContent({
@@ -232,6 +370,12 @@ function PopoverContent({
     return dy > 0 ? "bottom" : "top";
   }, [dragVersion, dragPosition, popoverEl, anchored, spec]);
 
+  const anchorOffsetX = anchored
+    ? ((spec as AnchoredPopover).popover?.anchorOffset?.x ?? 0)
+    : 0;
+  const anchorOffsetY = anchored
+    ? ((spec as AnchoredPopover).popover?.anchorOffset?.y ?? 0)
+    : 0;
   const middleware = useMemo<Middleware[]>(() => {
     void dragVersion;
     // Viewport popovers don't use floating-ui positioning (inlineStyles overrides
@@ -254,13 +398,24 @@ function PopoverContent({
         arrow({ element: arrowRef, padding: 4 }),
       ];
     }
+    const baseOffset = opts.popoverOffset ?? 10;
     return [
-      offset(opts.popoverOffset ?? 10),
+      // anchorOffset is cartesian (x = right, y = down) so it stays consistent
+      // even after flip(). Map to floating-ui's mainAxis/crossAxis using the
+      // *resolved* placement.
+      offset(({ placement }) =>
+        cartesianToAxisOffset(
+          baseOffset,
+          placement,
+          anchorOffsetX,
+          anchorOffsetY,
+        ),
+      ),
       flip(),
       shift({ padding: 8 }),
       arrow({ element: arrowRef, padding: 4 }),
     ];
-  }, [dragVersion, opts.popoverOffset, anchored]);
+  }, [dragVersion, opts.popoverOffset, anchored, anchorOffsetX, anchorOffsetY]);
 
   const userPlacement = anchored
     ? computeUserPlacement(
@@ -477,6 +632,9 @@ function PopoverContent({
   // otherwise the popover renders briefly at (0,0) before the transform updates,
   // producing a visible jump on every step entry. Using opacity (rather than
   // visibility/display) keeps the popover queryable by role for a11y tests.
+  const viewportArrow = anchored
+    ? null
+    : ((spec as ViewportPopover).popover.arrow ?? null);
   const hideUntilPositioned = anchored && !isPositioned;
   const inlineStyles: CSSProperties = anchored
     ? {
@@ -487,6 +645,11 @@ function PopoverContent({
         (spec as ViewportPopover).popover.position,
         (spec as ViewportPopover).popover.viewportOffset,
       );
+  const widthOverride = spec.popover?.width;
+  if (widthOverride != null) {
+    inlineStyles.width = widthOverride;
+    inlineStyles.maxWidth = widthOverride;
+  }
 
   return (
     <FloatingPortal root={container}>
@@ -591,6 +754,13 @@ function PopoverContent({
             height={opts.arrow?.height}
             tipRadius={opts.arrow?.tipRadius}
             d={opts.arrow?.path}
+          />
+        )}
+        {!anchored && viewportArrow && (
+          <ViewportArrow
+            side={viewportArrow.side}
+            offset={viewportArrow.offset ?? 0}
+            arrowOpts={opts.arrow}
           />
         )}
       </div>

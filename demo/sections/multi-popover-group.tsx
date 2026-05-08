@@ -30,14 +30,17 @@ export function MultiPopoverGroupSection() {
         {
           element: targetRef.current,
           popover: {
-            title: "Hazbot",
-            description: "I will analyze your model after you run it!",
+            description:
+              "I will analyze your model after you run it! Did you see the instructions at the top of the page?",
+            width: 275,
           },
         },
         {
           popover: {
             position: "top-center",
-            title: "Scroll up!",
+            description: "Scroll up!",
+            viewportOffset: { y: 26 },
+            arrow: { side: "top" },
           },
           initialFocus: companionFocus,
         },

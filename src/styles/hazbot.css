@@ -24,8 +24,16 @@
   background-color: var(--coachmarks-popover-bg);
   color: var(--coachmarks-popover-text);
   border: 3px solid var(--coachmarks-popover-border);
-  box-shadow: 0 0 0 5px var(--coachmarks-popover-halo);
-  border-radius: 8px;
+  border-radius: 12px;
+  /* Halo via drop-shadow on the popover itself (NOT box-shadow): drop-shadow
+   * traces the composited alpha of the popover + its absolutely-positioned
+   * children, so the halo follows the popover rectangle AND the protruding
+   * arrow's V silhouette as a single continuous outline. Box-shadow only
+   * traces the rectangle and leaves the arrow with no halo. */
+  filter: drop-shadow(0 -2px 0 var(--coachmarks-popover-halo))
+    drop-shadow(2px 0 0 var(--coachmarks-popover-halo))
+    drop-shadow(0 2px 0 var(--coachmarks-popover-halo))
+    drop-shadow(-2px 0 0 var(--coachmarks-popover-halo));
 }
 
 .coachmarks-popover-title {
@@ -64,7 +72,7 @@
   color: var(--coachmarks-button-text);
   border: 1px solid var(--coachmarks-button-border);
   border-radius: 18px;
-  padding: 7px 22px;
+  padding: 7px 18px;
 }
 
 .coachmarks-popover-prev-btn:hover:not(:disabled),

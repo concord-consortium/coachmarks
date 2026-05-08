@@ -60,6 +60,15 @@
 .coachmarks-popover-description:first-child {
   padding-right: 28px;
 }
+
+/* Drop trailing margin when the title or description is the last visible child
+ * (companion popovers with only a title, primary popovers without buttons, etc.)
+ * so the content padding stays symmetric instead of leaving extra whitespace
+ * where the buttons would sit. */
+.coachmarks-popover-title:last-child,
+.coachmarks-popover-description:last-child {
+  margin-bottom: 0;
+}
 .coachmarks-popover-progress-text {
   white-space: nowrap;
 }

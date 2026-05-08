@@ -7,7 +7,7 @@ body {
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #222;
-  background: #fafafa;
+  background: #cccccc;
   overflow: hidden;
 }
 
@@ -134,7 +134,7 @@ body {
 
 .demo-tall-spacer {
   height: 1200px;
-  background: linear-gradient(to bottom, #fafafa, #ddd);
+  background: #cccccc;
   margin: 24px 0;
 }
 

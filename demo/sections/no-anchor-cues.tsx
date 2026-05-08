@@ -18,11 +18,14 @@ const POSITIONS: ViewportPopover["popover"]["position"][] = [
   "bottom-right",
 ];
 
+type ArrowSide = "none" | "top" | "right" | "bottom" | "left";
+
 export function NoAnchorCuesSection() {
   const [position, setPosition] =
     useState<ViewportPopover["popover"]["position"]>("top-center");
   const [offsetX, setOffsetX] = useState(0);
   const [offsetY, setOffsetY] = useState(8);
+  const [arrowSide, setArrowSide] = useState<ArrowSide>("none");
   const [engine, setEngine] = useState<EngineHandle | null>(null);
   const defaults = useEngineDefaults();
 
@@ -39,6 +42,7 @@ export function NoAnchorCuesSection() {
         title: "Viewport cue",
         description: `position: ${position}`,
         viewportOffset: { x: offsetX, y: offsetY },
+        ...(arrowSide !== "none" && { arrow: { side: arrowSide } }),
       },
     });
     setEngine(e);
@@ -82,6 +86,19 @@ export function NoAnchorCuesSection() {
             onChange={(e) => setOffsetY(Number(e.target.value))}
             style={{ width: 60 }}
           />
+        </label>
+        <label>
+          Arrow:{" "}
+          <select
+            value={arrowSide}
+            onChange={(e) => setArrowSide(e.target.value as ArrowSide)}
+          >
+            <option value="none">none</option>
+            <option value="top">top</option>
+            <option value="right">right</option>
+            <option value="bottom">bottom</option>
+            <option value="left">left</option>
+          </select>
         </label>
         <button type="button" className="demo-target" onClick={trigger}>
           Trigger

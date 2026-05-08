@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EngineLiveState } from "./engine-state";
-import { Popover } from "./popover";
+import { Popover, cartesianToAxisOffset } from "./popover";
 import { createStore } from "./store";
 import {
   makeAnchorButton as makeAnchorEl,
@@ -488,6 +488,140 @@ describe("Popover", () => {
       expect(popover.style.transform).toContain("9px");
     },
   );
+
+  it.each([
+    ["top", "rotate(180deg)"],
+    ["right", "rotate(-90deg)"],
+    ["bottom", ""],
+    ["left", "rotate(90deg)"],
+  ] as const)(
+    "viewport popover renders an arrow on the %s side with the right rotation",
+    (side, expectedRotation) => {
+      const container = makeContainer();
+      const step: PopoverSpec = {
+        popover: {
+          position: "top-center",
+          title: "Scroll up!",
+          arrow: { side },
+        },
+      } as PopoverSpec;
+      const { store } = makeStore(step);
+      render(<Popover store={store} popoverIndex={0} container={container} />);
+      const popover = screen.getByTestId("coachmarks-popover");
+      const svg = popover.querySelector(
+        `svg.coachmarks-popover-arrow-side-${side}`,
+      ) as SVGElement | null;
+      expect(svg).not.toBeNull();
+      expect(svg?.getAttribute("aria-hidden")).toBe("true");
+      // jsdom returns the camelCased style.transform.
+      const transform = (svg as unknown as HTMLElement).style.transform;
+      if (expectedRotation) {
+        expect(transform).toContain(expectedRotation);
+      } else {
+        expect(transform).toBe("");
+      }
+    },
+  );
+
+  it.each([
+    [
+      "anchored, numeric width → applied as px on width and max-width",
+      { element: null, popover: { title: "T", width: 270 } },
+      "270px",
+    ],
+    [
+      "viewport, numeric width → applied as px on width and max-width",
+      { popover: { position: "top-center", title: "T", width: 240 } },
+      "240px",
+    ],
+    [
+      "anchored, string width → applied verbatim",
+      { element: null, popover: { title: "T", width: "20rem" } },
+      "20rem",
+    ],
+  ] as const)("popover.width: %s", (_label, partialStep, expected) => {
+    const container = makeContainer();
+    let step: PopoverSpec;
+    if ("element" in partialStep && partialStep.element === null) {
+      step = {
+        ...partialStep,
+        element: makeAnchorEl(),
+      } as PopoverSpec;
+    } else {
+      step = partialStep as PopoverSpec;
+    }
+    const { store } = makeStore(step);
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    const popover = screen.getByTestId("coachmarks-popover");
+    expect(popover.style.width).toBe(expected);
+    expect(popover.style.maxWidth).toBe(expected);
+  });
+
+  it.each([
+    ["top", 10, 5, 10, { mainAxis: 0, crossAxis: 5 }],
+    ["top-start", 10, -3, -7, { mainAxis: 17, crossAxis: -3 }],
+    ["bottom", 10, 5, 10, { mainAxis: 20, crossAxis: 5 }],
+    ["left", 10, 5, 10, { mainAxis: 5, crossAxis: 10 }],
+    ["right", 10, 5, 10, { mainAxis: 15, crossAxis: 10 }],
+  ] as const)(
+    "cartesianToAxisOffset(%s, ...) maps cartesian x/y to mainAxis/crossAxis",
+    (placement, base, ax, ay, expected) => {
+      expect(cartesianToAxisOffset(base, placement, ax, ay)).toEqual(expected);
+    },
+  );
+
+  it("popover.width omitted → no inline width is set (theme/base CSS rules)", () => {
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: makeAnchorEl(),
+      popover: { title: "T" },
+    };
+    const { store } = makeStore(step);
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    const popover = screen.getByTestId("coachmarks-popover");
+    expect(popover.style.width).toBe("");
+    expect(popover.style.maxWidth).toBe("");
+  });
+
+  it("viewport popover does NOT render an arrow when arrow is not configured", () => {
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      popover: {
+        position: "top-center",
+        title: "Just a cue",
+      },
+    } as PopoverSpec;
+    const { store } = makeStore(step);
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    expect(
+      container.querySelector("[class^='coachmarks-popover-arrow-side-']"),
+    ).toBeNull();
+  });
+
+  it("viewport popover arrow honors engine-level arrow option overrides", () => {
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      popover: {
+        position: "top-center",
+        title: "Scroll up!",
+        arrow: { side: "top" },
+      },
+    } as PopoverSpec;
+    const { store } = makeStore(step, {
+      arrow: { width: 28, height: 14, strokeWidth: 3 },
+    });
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    const svg = container.querySelector(
+      "svg.coachmarks-popover-arrow-side-top",
+    );
+    expect(Number(svg?.getAttribute("width"))).toBeGreaterThanOrEqual(28);
+    expect(Number(svg?.getAttribute("height"))).toBeGreaterThanOrEqual(14);
+    const renderedStrokeWidth =
+      svg?.getAttribute("stroke-width") ??
+      svg?.querySelector("[stroke-width]")?.getAttribute("stroke-width") ??
+      "1";
+    expect(Number(renderedStrokeWidth)).toBeGreaterThanOrEqual(3);
+  });
 
   it("viewport position center applies cartesian offsets on both axes", () => {
     const container = makeContainer();
