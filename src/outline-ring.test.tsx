@@ -106,6 +106,41 @@ describe("OutlineRings", () => {
     expect(screen.getAllByTestId("coachmarks-outline-ring").length).toBe(1);
   });
 
+  it("draws the ring around ringElement when it differs from the anchor", () => {
+    const anchor = makeAnchor({ top: 10, left: 20, width: 40, height: 30 });
+    const ringTarget = makeAnchor({
+      top: 100,
+      left: 200,
+      width: 80,
+      height: 60,
+    });
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: anchor,
+      ringElement: ringTarget,
+      popover: { title: "T" },
+    };
+    const store = createStore<EngineLiveState>(makeState(step));
+    render(<OutlineRings store={store} container={container} />);
+    const ring = screen.getByTestId("coachmarks-outline-ring");
+    // Inflated rect of ringTarget (not the anchor): top/left -2, width/height +4.
+    expect(ring.style.top).toBe("98px");
+    expect(ring.style.left).toBe("198px");
+    expect(ring.style.width).toBe("84px");
+    expect(ring.style.height).toBe("64px");
+  });
+
+  it("renders no ring when showOutlineRing is false", () => {
+    const target = makeAnchor();
+    const container = makeContainer();
+    const step: PopoverSpec = { element: target, popover: { title: "T" } };
+    const state = makeState(step);
+    state.options = { showOutlineRing: false };
+    const store = createStore<EngineLiveState>(state);
+    render(<OutlineRings store={store} container={container} />);
+    expect(screen.queryByTestId("coachmarks-outline-ring")).toBeNull();
+  });
+
   it("dismissing a companion removes its ring on the next render", () => {
     const a1 = makeAnchor({ top: 10, left: 20, width: 40, height: 30 });
     const a2 = makeAnchor({ top: 100, left: 20, width: 40, height: 30 });

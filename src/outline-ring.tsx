@@ -21,16 +21,25 @@ interface RingRect {
 export function OutlineRings({ store, container }: OutlineRingsProps) {
   const popovers = useStore(store, (s) => s.currentPopovers);
   const dismissed = useStore(store, (s) => s.dismissedPopoverIndices);
+  const showOutlineRing = useStore(
+    store,
+    (s) => s.options.showOutlineRing ?? true,
+  );
+  if (!showOutlineRing) return null;
   return (
     <>
       {popovers.map((spec, i) => {
         if (dismissed.has(i)) return null;
         if (!spec.element) return null;
+        // Ring target defaults to the anchor element, but a step may ring a
+        // different element (e.g. ring a button while anchoring to its inner icon).
+        const ringTarget =
+          (spec as { ringElement?: HTMLElement }).ringElement ?? spec.element;
         return (
           <OutlineRing
             // biome-ignore lint/suspicious/noArrayIndexKey: index is the stable popover identity here.
             key={i}
-            target={spec.element}
+            target={ringTarget}
             store={store}
             container={container}
           />

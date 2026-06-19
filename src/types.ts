@@ -2,6 +2,11 @@ import type { ReactNode } from "react";
 
 export type AnchoredPopover = {
   element: HTMLElement;
+  /** Element the outline (focus) ring is drawn around. Defaults to `element`.
+   *  Set this to ring a different element than the popover is anchored to — e.g.
+   *  anchor/center the popover over a small inner icon while ringing its larger
+   *  interactive container. */
+  ringElement?: HTMLElement;
   popover?: {
     title?: string;
     description?: string;
@@ -71,6 +76,10 @@ export interface EngineOptions {
   showButtons?: ("next" | "previous" | "close")[];
   disableButtons?: ("next" | "previous")[];
   showProgress?: boolean;
+  /** Draw the outline (focus) ring around each anchored popover's ring target.
+   *  Default true. Set false to suppress the ring entirely (popover + arrow still
+   *  render). */
+  showOutlineRing?: boolean;
   allowKeyboardControl?: boolean;
   allowClose?: boolean;
   animate?: boolean;
@@ -84,6 +93,11 @@ export interface EngineOptions {
 
   /** Pull focus to the popover when an iframe is the active element. Default true. */
   pullFocusFromIframe?: boolean;
+
+  /** Parse a constrained markdown subset (bold `**…**` / `__…__`) in the popover
+   *  description. Default true. HTML is always escaped (never injected). Set false
+   *  to render the description verbatim. */
+  parseMarkdown?: boolean;
 
   /** Optional close-icon override. Default: bundled coachmarks close icon. */
   closeIcon?: ReactNode;

@@ -1,6 +1,13 @@
 @charset "UTF-8";
+/* Hazbotspeak (popover description) renders in Chakra Petch; labels/buttons stay
+ * Lato (assumed provided by the host app, as it is for the family name alone).
+ * Chakra Petch is loaded remotely so consumers get it from the theme with no
+ * bundled binaries and no extra wiring. Weights: 500 (Medium, body) + 700 (Bold,
+ * highlighted spans). */
+@import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap");
 
-/* Hazbot theme. Per AP-64 design and verified against rendered Hazbot popovers. */
+/* Hazbot theme. Per the Hazbot Coach Mark Zeplin design, verified against the
+ * rendered popovers. */
 /* Verified contrast (WCAG 2.1 AA): */
 /*   Body #222222 on #FFFFFF — 16.3:1 (pass AAA) */
 /*   Button #222222 on #C1DAFF — 12.4:1 (pass AAA) */
@@ -20,16 +27,19 @@
 
 .coachmarks-popover {
   font-family: Lato, sans-serif;
-  max-width: 500px;
+  /* Design: all coach marks are 280px wide. */
+  width: 280px;
+  max-width: 280px;
   background-color: var(--coachmarks-popover-bg);
   color: var(--coachmarks-popover-text);
   border: 3px solid var(--coachmarks-popover-border);
-  border-radius: 12px;
+  border-radius: 10px;
   /* Halo via drop-shadow on the popover itself (NOT box-shadow): drop-shadow
    * traces the composited alpha of the popover + its absolutely-positioned
    * children, so the halo follows the popover rectangle AND the protruding
    * arrow's V silhouette as a single continuous outline. Box-shadow only
-   * traces the rectangle and leaves the arrow with no halo. */
+   * traces the rectangle and leaves the arrow with no halo. The 2px white ring
+   * is the design's `outline: 2px solid white`. */
   filter: drop-shadow(0 -2px 0 var(--coachmarks-popover-halo))
     drop-shadow(2px 0 0 var(--coachmarks-popover-halo))
     drop-shadow(0 2px 0 var(--coachmarks-popover-halo))
@@ -44,17 +54,18 @@
   color: var(--coachmarks-popover-text);
 }
 
-.coachmarks-popover-close-btn {
-  display: none;
-}
-
+/* Hazbotspeak: Chakra Petch Medium 16px, with Bold (700) for **highlighted** spans. */
 .coachmarks-popover-description {
-  font-family: Lato, sans-serif;
+  font-family: "Chakra Petch", Lato, sans-serif;
   font-size: 16px;
-  font-weight: normal;
+  font-weight: 500;
   line-height: 1.5;
   margin: 0 0 10px;
   color: var(--coachmarks-popover-text);
+}
+
+.coachmarks-popover-description strong {
+  font-weight: 700;
 }
 
 .coachmarks-popover-description:first-child {
@@ -77,5 +88,53 @@
 
 .coachmarks-popover-prev-btn:hover:not(:disabled),
 .coachmarks-popover-next-btn:hover:not(:disabled) {
-  filter: brightness(0.95);
+  background-color: #a4c7f9;
+}
+
+.coachmarks-popover-prev-btn:active:not(:disabled),
+.coachmarks-popover-next-btn:active:not(:disabled) {
+  background-color: #80aff5;
+}
+
+/* Close (×) button — a single bordered circle (no pseudo-elements). Consumers
+ * opt in via showButtons including "close". White disc · 3px blue ring (the
+ * button's own border) · blue × (the bundled glyph, drawn with currentColor).
+ * Sits over the popover's top-right corner. Hover/select fill the disc light
+ * blue (#a4c7f9) and scale from center (hover up, active down); the × keeps its
+ * color. */
+.coachmarks-popover-close-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  /* Place the disc's center ~3px inside the popover's top-right corner. */
+  transform: translate(40%, -40%);
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--coachmarks-popover-bg);
+  border: 3px solid var(--coachmarks-popover-border);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--coachmarks-popover-border);
+  transition: transform 120ms ease-out, background-color 120ms ease-out;
+}
+
+.coachmarks-popover-close-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.coachmarks-popover-close-btn:hover {
+  background-color: #a4c7f9;
+  transform: translate(40%, -40%) scale(1.15);
+}
+
+.coachmarks-popover-close-btn:active {
+  background-color: #a4c7f9;
+  transform: translate(40%, -40%) scale(0.9);
 }

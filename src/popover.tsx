@@ -22,6 +22,7 @@ import {
 } from "react";
 import { type EngineLiveState, dismissBehaviorOf } from "./engine-state";
 import { CloseIcon } from "./icons/close";
+import { renderMarkdown } from "./markdown";
 import { renderProgressText } from "./progress-text";
 import { scrollTargetIntoView } from "./scroll-into-view";
 import { type Store, useStore } from "./store";
@@ -685,7 +686,9 @@ function PopoverContent({
               id={descriptionId}
               data-testid="coachmarks-popover-description"
             >
-              {popoverContent?.description}
+              {(opts.parseMarkdown ?? true)
+                ? renderMarkdown(popoverContent?.description ?? "")
+                : popoverContent?.description}
             </p>
           )}
           {isPrimary && (

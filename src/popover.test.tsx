@@ -118,6 +118,49 @@ describe("Popover", () => {
     expect(popover.getAttribute("aria-describedby")).toBeNull();
   });
 
+  it("renders **bold** markdown in the description by default", () => {
+    const anchor = makeAnchorEl();
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: anchor,
+      popover: { description: "did you **run** it?" },
+    };
+    const { store } = makeStore(step);
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    const desc = screen.getByTestId("coachmarks-popover-description");
+    expect(desc.querySelector("strong")?.textContent).toBe("run");
+    expect(desc.textContent).toBe("did you run it?");
+  });
+
+  it("renders the description verbatim when parseMarkdown is false", () => {
+    const anchor = makeAnchorEl();
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: anchor,
+      popover: { description: "did you **run** it?" },
+    };
+    const { store } = makeStore(step, { parseMarkdown: false });
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    const desc = screen.getByTestId("coachmarks-popover-description");
+    expect(desc.querySelector("strong")).toBeNull();
+    expect(desc.textContent).toBe("did you **run** it?");
+  });
+
+  it("escapes HTML embedded in the description", () => {
+    const anchor = makeAnchorEl();
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: anchor,
+      popover: { description: "a <b>tag</b> and **bold**" },
+    };
+    const { store } = makeStore(step);
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    const desc = screen.getByTestId("coachmarks-popover-description");
+    expect(desc.querySelector("b")).toBeNull();
+    expect(desc.querySelector("strong")?.textContent).toBe("bold");
+    expect(desc.textContent).toBe("a <b>tag</b> and bold");
+  });
+
   it("close button has accessible name from closeBtnAriaLabel option", () => {
     const anchor = makeAnchorEl();
     const container = makeContainer();
