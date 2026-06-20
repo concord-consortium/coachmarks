@@ -38,6 +38,8 @@ function makeStore(
   const cancel = vi.fn();
   const dismissPopover = vi.fn();
   const dropCompanionSilently = vi.fn();
+  const degradeCurrentStep = vi.fn();
+  const fireHighlightStarted = vi.fn();
   const initial: EngineLiveState = {
     active: true,
     kind: "tour",
@@ -55,8 +57,12 @@ function makeStore(
     cancel,
     dismissPopover,
     dropCompanionSilently,
+    degradeCurrentStep,
+    fireHighlightStarted,
     destroyed: false,
     seqId: 1,
+    waitDispose: null,
+    degradeSeq: 0,
   };
   return {
     store: createStore<EngineLiveState>(initial),
@@ -65,6 +71,8 @@ function makeStore(
     cancel,
     dismissPopover,
     dropCompanionSilently,
+    degradeCurrentStep,
+    fireHighlightStarted,
   };
 }
 

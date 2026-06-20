@@ -12,8 +12,38 @@ import type {
   CreateCoachmarksEngineArgs,
   EngineHandle,
   EngineStep,
+  PopoverSpec,
+  SelectorPopover,
+  ViewportPopover,
 } from "./types";
+import { waitForTarget } from "./wait-for-target";
 import { warnings } from "./warnings";
+
+/** A selector-anchored popover whose target has not yet been resolved to a live element. */
+function isSelector(spec: PopoverSpec): spec is SelectorPopover {
+  return (
+    spec.element == null && typeof (spec as SelectorPopover).target === "string"
+  );
+}
+
+/** Resolve a `SelectorPopover` to an element-anchored spec by querying the document.
+ *  `element`/`ringElement` may be undefined if the selector does not currently match.
+ *  Non-selector specs pass through unchanged. */
+function resolvePopover(spec: PopoverSpec): PopoverSpec {
+  if (!isSelector(spec)) return spec;
+  const element = document.querySelector<HTMLElement>(spec.target) ?? undefined;
+  const ringSelector = spec.ringTarget ?? spec.target;
+  const ringElement =
+    document.querySelector<HTMLElement>(ringSelector) ?? undefined;
+  // Cast: when `element` is found this is an AnchoredPopover (with a harmless extra
+  // `target`); the primary is always laid-out before entry (goToStep waits), so an
+  // undefined `element` only occurs for an absent companion, handled downstream.
+  return { ...spec, element, ringElement } as PopoverSpec;
+}
+
+function resolvePopovers(specs: PopoverSpec[]): PopoverSpec[] {
+  return specs.map(resolvePopover);
+}
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 
@@ -63,6 +93,8 @@ export function createCoachmarksEngine(
     preFocusAnchor: null,
     destroyed: false,
     seqId: 0,
+    waitDispose: null,
+    degradeSeq: 0,
     moveNext: () => moveNext(),
     movePrevious: () => movePrevious(),
     cancel: () => {
@@ -72,7 +104,15 @@ export function createCoachmarksEngine(
     },
     dismissPopover: (idx: number) => dismissPopoverInternal(idx),
     dropCompanionSilently: (idx: number) => dropCompanionSilentlyInternal(idx),
+    degradeCurrentStep: () => degradeCurrentStep(),
+    fireHighlightStarted: (activeIndex: number) =>
+      fireHighlightStartedOnce(activeIndex),
   });
+
+  // onHighlightStarted dedup latch lives here (not in the popover) so it survives the
+  // anchored→centered remount of a degraded primary: a degrade re-render must NOT
+  // re-fire onHighlightStarted for the same step.
+  let firedHighlightKey: string | null = null;
 
   const container = document.createElement("div");
   container.setAttribute("data-testid", "coachmarks-root");
@@ -89,7 +129,11 @@ export function createCoachmarksEngine(
     const s = store.getSnapshot();
     const step = s.steps[index];
     if (!step) return;
-    const popovers = popoversOf(step);
+    // Resolve selector targets to live elements before storing: the render layer
+    // (popover.tsx / outline-ring.tsx) only ever sees element-anchored or viewport
+    // specs. `currentStep` keeps the authored step (selectors intact); `currentPopovers`
+    // holds the resolved element-anchored specs.
+    const popovers = resolvePopovers(popoversOf(step));
     store.setState((prev) => ({
       ...prev,
       activeIndex: index,
@@ -105,26 +149,39 @@ export function createCoachmarksEngine(
     // it's been placed.
   }
 
+  // Fire onHighlightStarted at most once per step (keyed on seqId:activeIndex). The latch
+  // lives in the engine closure, not the popover, so a degrade remount of the primary does
+  // not re-fire it. seqId bumps on drive()/highlight() so stale keys never collide.
+  function fireHighlightStartedOnce(activeIndex: number) {
+    const s = store.getSnapshot();
+    if (s.destroyed || !s.currentStep) return;
+    const key = `${s.seqId}:${activeIndex}`;
+    if (firedHighlightKey === key) return;
+    firedHighlightKey = key;
+    const primaryAnchor = s.currentPopovers[0]?.element;
+    s.callbacks.onHighlightStarted?.(primaryAnchor, s.currentStep, {
+      state: { activeIndex },
+    });
+  }
+
   function leaveStep() {
     const s = store.getSnapshot();
     if (!s.active) return;
     s.callbacks.onDeselected?.();
   }
 
-  function startStepWithDeferral(
-    step: EngineStep,
-    indexInSequence: number,
-    seqId: number,
-  ) {
-    const popovers = popoversOf(step);
-    const primary = popovers[0];
+  function startStepWithDeferral(index: number, seqId: number) {
+    const s = store.getSnapshot();
+    const step = s.steps[index];
+    if (!step) return;
+    const primary = resolvePopover(popoversOf(step)[0]);
 
     if (!primary.element) {
-      checkCompanionsAndEnter(step, indexInSequence, seqId, new Set());
+      checkCompanionsAndEnter(index, seqId, new Set());
       return;
     }
     if (isLaidOut(primary.element)) {
-      checkCompanionsAndEnter(step, indexInSequence, seqId, new Set());
+      checkCompanionsAndEnter(index, seqId, new Set());
       return;
     }
     requestAnimationFrame(() => {
@@ -133,7 +190,7 @@ export function createCoachmarksEngine(
       // primary.element is non-null here: the !primary.element early return
       // above means we only reach the rAF when it was set.
       if (isLaidOut(primary.element as HTMLElement)) {
-        checkCompanionsAndEnter(step, indexInSequence, seqId, new Set());
+        checkCompanionsAndEnter(index, seqId, new Set());
       } else {
         cur.callbacks.onCancelRequested?.();
       }
@@ -141,39 +198,125 @@ export function createCoachmarksEngine(
   }
 
   function checkCompanionsAndEnter(
-    step: EngineStep,
-    indexInSequence: number,
+    index: number,
     seqId: number,
     dismissed: Set<number>,
   ) {
-    const popovers = popoversOf(step);
+    const s = store.getSnapshot();
+    const step = s.steps[index];
+    if (!step) return;
+    const popovers = resolvePopovers(popoversOf(step));
     if (popovers.length === 1) {
-      enterStep(indexInSequence, dismissed);
+      enterStep(index, dismissed);
       return;
     }
     const needsRaf: number[] = [];
     for (let i = 1; i < popovers.length; i++) {
       const p = popovers[i];
-      if (!p.element) continue;
+      if (!p.element) {
+        // An unresolved selector companion (carries `target`, no live element) is dropped
+        // like a not-laid-out anchor so it never reaches the render layer as a malformed
+        // viewport bubble. A genuine ViewportPopover companion (no `target`) stays.
+        if (typeof (p as SelectorPopover).target === "string") {
+          dismissed.add(i);
+          devWarn(warnings.companionDropped(i));
+        }
+        continue;
+      }
       if (isLaidOut(p.element)) continue;
       needsRaf.push(i);
     }
     if (needsRaf.length === 0) {
-      enterStep(indexInSequence, dismissed);
+      enterStep(index, dismissed);
       return;
     }
     requestAnimationFrame(() => {
       const cur = store.getSnapshot();
       if (cur.destroyed || cur.seqId !== seqId) return;
+      const resolved = resolvePopovers(popoversOf(step));
       for (const i of needsRaf) {
-        // p.element is non-null: needsRaf only collected indices where
-        // p.element was set above.
-        const p = popovers[i] as { element: HTMLElement };
-        if (isLaidOut(p.element)) continue;
+        const p = resolved[i];
+        if (p.element && isLaidOut(p.element)) continue;
         dismissed.add(i);
         devWarn(warnings.companionDropped(i));
       }
-      enterStep(indexInSequence, dismissed);
+      enterStep(index, dismissed);
+    });
+  }
+
+  // Single entry point for every step transition (drive/highlight first step, moveNext,
+  // movePrevious, moveTo). Routes selector-anchored steps through wait-for-target and
+  // live-element/viewport steps through the existing deferral (which keeps the
+  // cancel-on-not-laid-out back-compat path).
+  function goToStep(index: number, isInitial: boolean) {
+    const s = store.getSnapshot();
+    if (s.destroyed) return;
+    const step = s.steps[index];
+    if (!step) return;
+    const primary = popoversOf(step)[0];
+    const seqId = s.seqId;
+
+    if (isSelector(primary)) {
+      const el = document.querySelector<HTMLElement>(primary.target);
+      if (el && isLaidOut(el)) {
+        commitTransition(index, isInitial, seqId);
+        return;
+      }
+      // Target absent/not-laid-out: wait for it to appear, holding the current step.
+      // Re-entrancy guard: at most one wait in flight — a second advance while waiting
+      // targets the same unchanged `index`, so no-op it (the in-flight wait already
+      // covers it). This prevents double leaveStep/enterStep when the target appears.
+      if (s.waitDispose) return;
+      const dispose = waitForTarget(primary.target, () => {
+        const cur = store.getSnapshot();
+        if (cur.destroyed || cur.seqId !== seqId) return;
+        store.setState((prev) => ({ ...prev, waitDispose: null }));
+        commitTransition(index, isInitial, seqId);
+      });
+      store.setState((prev) => ({ ...prev, waitDispose: dispose }));
+      return;
+    }
+
+    commitTransition(index, isInitial, seqId);
+  }
+
+  function commitTransition(index: number, isInitial: boolean, seqId: number) {
+    if (!isInitial) leaveStep();
+    startStepWithDeferral(index, seqId);
+  }
+
+  // Gated degrade-on-removal: when an actionGated step's primary anchor leaves layout,
+  // re-render the step as an anchorless centered popover (same content / step number /
+  // buttons, no arrow) instead of cancelling. Same-step invariant: does NOT bump
+  // activeIndex/seqId, so onHighlightStarted/onDeselected do not re-fire.
+  function degradeCurrentStep() {
+    const s = store.getSnapshot();
+    if (s.destroyed || !s.active || !s.currentStep) return;
+    if (!s.options.actionGated) return;
+    const primary = s.currentPopovers[0];
+    if (!primary) return;
+    // Already degraded (anchorless centered)? Don't churn.
+    if (!primary.element && (primary as ViewportPopover).popover?.position)
+      return;
+    const content = primary.popover ?? {};
+    const degraded: ViewportPopover = {
+      element: undefined,
+      popover: {
+        title: content.title,
+        description: content.description,
+        image: content.image,
+        position: "center",
+        ...(content.width != null ? { width: content.width } : null),
+      },
+    };
+    store.setState((prev) => {
+      const next = [...prev.currentPopovers];
+      next[0] = degraded;
+      return {
+        ...prev,
+        currentPopovers: next,
+        degradeSeq: prev.degradeSeq + 1,
+      };
     });
   }
 
@@ -254,6 +397,7 @@ export function createCoachmarksEngine(
     // The seqId increment is inside the updater so re-entrant drive()/
     // highlight() from inside onDeselected can't collide on a stale read.
     const wasActive = before.active;
+    before.waitDispose?.();
     let mySeqId = 0;
     store.setState((prev) => {
       mySeqId = prev.seqId + 1;
@@ -267,11 +411,12 @@ export function createCoachmarksEngine(
         currentPopovers: [],
         dismissedPopoverIndices: new Set(),
         seqId: mySeqId,
+        waitDispose: null,
       };
     });
     if (wasActive) before.callbacks.onDeselected?.();
     if (!firstStep) return;
-    startStepWithDeferral(firstStep, 0, mySeqId);
+    goToStep(0, true);
   }
 
   function highlight(step: EngineStep) {
@@ -286,6 +431,7 @@ export function createCoachmarksEngine(
       return;
     }
     const wasActive = before.active;
+    before.waitDispose?.();
     let mySeqId = 0;
     store.setState((prev) => {
       mySeqId = prev.seqId + 1;
@@ -299,10 +445,11 @@ export function createCoachmarksEngine(
         currentPopovers: [],
         dismissedPopoverIndices: new Set(),
         seqId: mySeqId,
+        waitDispose: null,
       };
     });
     if (wasActive) before.callbacks.onDeselected?.();
-    startStepWithDeferral(step, 0, mySeqId);
+    goToStep(0, true);
   }
 
   function moveNext() {
@@ -317,8 +464,7 @@ export function createCoachmarksEngine(
       destroy();
       return;
     }
-    leaveStep();
-    enterStep(next);
+    goToStep(next, false);
   }
 
   function movePrevious() {
@@ -330,8 +476,7 @@ export function createCoachmarksEngine(
     if (!s.active) return;
     const prev = s.activeIndex - 1;
     if (prev < 0) return;
-    leaveStep();
-    enterStep(prev);
+    goToStep(prev, false);
   }
 
   function moveTo(index: number) {
@@ -349,8 +494,7 @@ export function createCoachmarksEngine(
       return;
     }
     if (index === s.activeIndex) return;
-    leaveStep();
-    enterStep(index);
+    goToStep(index, false);
   }
 
   function refresh() {
@@ -370,6 +514,7 @@ export function createCoachmarksEngine(
     const s = store.getSnapshot();
     if (s.destroyed) return;
 
+    s.waitDispose?.();
     leaveStep();
 
     const active = document.activeElement as HTMLElement | null;
@@ -398,6 +543,7 @@ export function createCoachmarksEngine(
       currentPopovers: [],
       dismissedPopoverIndices: new Set(),
       destroyed: true,
+      waitDispose: null,
     }));
 
     if (focusInEngine) {

@@ -529,22 +529,16 @@ function PopoverContent({
   // Fire onHighlightStarted once per step entry, after the popover has mounted
   // and (for anchored steps) floating-ui has computed its first position. Only
   // the primary popover (popoverIndex === 0) fires it; companions never do.
-  // Keyed on `${seqId}:${activeIndex}` so each new step entry re-fires exactly
-  // once even when the primary's React instance persists across transitions.
-  const firedForStepRef = useRef<string | null>(null);
+  // The once-per-step latch lives in the engine (keyed on `${seqId}:${activeIndex}`),
+  // not here, so a gated degrade — which remounts the primary anchored→centered — does
+  // NOT re-fire it for the same step. `seqId` stays in deps so a re-entrant highlight()
+  // to a new spec (activeIndex 0 → 0) still re-runs the effect; the engine latch dedupes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seqId retriggers on re-entry.
   useEffect(() => {
     if (!isPrimary) return;
     if (!popoverEl) return;
     if (anchored && !isPositioned) return;
-    const key = `${seqId}:${activeIndex}`;
-    if (firedForStepRef.current === key) return;
-    firedForStepRef.current = key;
-    const s = store.getSnapshot();
-    if (!s.currentStep) return;
-    const primaryAnchor = s.currentPopovers[0]?.element;
-    s.callbacks.onHighlightStarted?.(primaryAnchor, s.currentStep, {
-      state: { activeIndex },
-    });
+    store.getSnapshot().fireHighlightStarted(activeIndex);
   }, [isPrimary, popoverEl, anchored, isPositioned, seqId, activeIndex, store]);
 
   // Target watcher (anchored only).
@@ -559,6 +553,10 @@ function PopoverContent({
     const behavior = dismissBehaviorOf(s.currentStep);
     if (behavior === "individual" && popoverIndex > 0) {
       s.dropCompanionSilently(popoverIndex);
+    } else if (s.options.actionGated) {
+      // Gated degrade-on-removal: a removed anchor re-floats the step as a centered
+      // popover instead of cancelling (held-during-wait and terminal cases).
+      s.degradeCurrentStep();
     } else {
       s.cancel();
     }

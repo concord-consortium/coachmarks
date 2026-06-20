@@ -881,4 +881,270 @@ describe("createCoachmarksEngine", () => {
     await flushReact();
     expect(document.activeElement).toBe(elsewhere);
   });
+
+  // --- Selector targets, wait-for-appearance, and gated degrade-on-removal (WM-17) ---
+
+  /** Anchor that matches `[data-testid="<id>"]` and passes isLaidOut. */
+  function makeSelectorAnchor(
+    id: string,
+    rect?: { left: number; top: number; width: number; height: number },
+  ): HTMLButtonElement {
+    const el = makeAnchor(rect);
+    el.setAttribute("data-testid", id);
+    return el;
+  }
+
+  /** Hide an anchor (fails isLaidOut) and poke an attribute so the MutationObserver re-checks. */
+  function hideAnchor(el: HTMLElement) {
+    Object.defineProperty(el, "offsetParent", {
+      configurable: true,
+      value: null,
+    });
+    el.style.display = "none";
+    el.setAttribute("data-hidden", "1");
+  }
+
+  function primaryTitle(): string | null {
+    const titles = screen.queryAllByTestId("coachmarks-popover-title");
+    return titles[0]?.textContent ?? null;
+  }
+
+  it("selector step whose target never appears keeps the prior step active (no cancel)", async () => {
+    makeSelectorAnchor("sel-1");
+    const onCancelRequested = vi.fn();
+    const onDeselected = vi.fn();
+    const engine = track(
+      createCoachmarksEngine({
+        actionGated: true,
+        onCancelRequested,
+        onDeselected,
+      }),
+    );
+    await act(async () => {
+      engine.drive([
+        { target: '[data-testid="sel-1"]', popover: { title: "One" } },
+        { target: '[data-testid="sel-missing"]', popover: { title: "Two" } },
+      ]);
+    });
+    await flushReact();
+    expect(primaryTitle()).toBe("One");
+
+    await act(async () => {
+      engine.moveNext();
+      await Promise.resolve();
+    });
+    await flushReact();
+    // Target never appears: stay on step 1, no cancel, no deselect.
+    expect(primaryTitle()).toBe("One");
+    expect(onDeselected).not.toHaveBeenCalled();
+    expect(onCancelRequested).not.toHaveBeenCalled();
+  });
+
+  it("two moveNext() during one wait window produce a single transition (re-entrancy guard)", async () => {
+    makeSelectorAnchor("re-1");
+    const onDeselected = vi.fn();
+    const engine = track(
+      createCoachmarksEngine({ actionGated: true, onDeselected }),
+    );
+    await act(async () => {
+      engine.drive([
+        { target: '[data-testid="re-1"]', popover: { title: "One" } },
+        { target: '[data-testid="re-2"]', popover: { title: "Two" } },
+      ]);
+    });
+    await flushReact();
+
+    // Two advances while the next target is absent — the second must no-op.
+    await act(async () => {
+      engine.moveNext();
+      engine.moveNext();
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(onDeselected).not.toHaveBeenCalled();
+    expect(primaryTitle()).toBe("One");
+
+    // Reveal the target: exactly one transition runs.
+    await act(async () => {
+      makeSelectorAnchor("re-2", {
+        left: 300,
+        top: 100,
+        width: 50,
+        height: 30,
+      });
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(onDeselected).toHaveBeenCalledTimes(1);
+    expect(primaryTitle()).toBe("Two");
+  });
+
+  it("gated degrade-on-removal (a): held step whose anchor is removed mid-wait re-floats, then advances when the next target appears — no cancel", async () => {
+    const a1 = makeSelectorAnchor("ga-1");
+    const onCancelRequested = vi.fn();
+    const onDeselected = vi.fn();
+    const engine = track(
+      createCoachmarksEngine({
+        actionGated: true,
+        onCancelRequested,
+        onDeselected,
+      }),
+    );
+    await act(async () => {
+      engine.drive([
+        { target: '[data-testid="ga-1"]', popover: { title: "One" } },
+        { target: '[data-testid="ga-2"]', popover: { title: "Two" } },
+      ]);
+    });
+    await flushReact();
+
+    // Advance: step 2's target is absent → hold step 1 and wait.
+    await act(async () => {
+      engine.moveNext();
+      await Promise.resolve();
+    });
+    await flushReact();
+
+    // Remove step 1's (held) anchor: gated degrade, not cancel.
+    await act(async () => {
+      hideAnchor(a1);
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(onCancelRequested).not.toHaveBeenCalled();
+    // Step 1 is still shown (now centered/anchorless), not torn down.
+    expect(primaryTitle()).toBe("One");
+
+    // The pending wait still resolves when step 2's target appears.
+    await act(async () => {
+      makeSelectorAnchor("ga-2", {
+        left: 300,
+        top: 100,
+        width: 50,
+        height: 30,
+      });
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(onCancelRequested).not.toHaveBeenCalled();
+    expect(onDeselected).toHaveBeenCalledTimes(1);
+    expect(primaryTitle()).toBe("Two");
+  });
+
+  it("gated degrade-on-removal (b): terminal step's anchor removed re-floats keeping Done/close; Done still completes — no cancel", async () => {
+    const a = makeSelectorAnchor("term-1");
+    const onCancelRequested = vi.fn();
+    const onDestroyed = vi.fn();
+    const engine = track(
+      createCoachmarksEngine({
+        actionGated: true,
+        showButtons: ["next", "close"],
+        showProgress: true,
+        doneBtnText: "Got it!",
+        onCancelRequested,
+        onDestroyed,
+      }),
+    );
+    await act(async () => {
+      engine.drive([
+        { target: '[data-testid="term-1"]', popover: { title: "Only" } },
+      ]);
+    });
+    await flushReact();
+    expect(
+      screen.getByTestId("coachmarks-popover-progress-text").textContent,
+    ).toBe("1 of 1");
+
+    // Remove the terminal anchor with no advance pending → degrade, not cancel.
+    await act(async () => {
+      hideAnchor(a);
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(onCancelRequested).not.toHaveBeenCalled();
+    expect(primaryTitle()).toBe("Only");
+    // Keeps its Done + close + step number.
+    const doneBtn = screen.getByTestId("coachmarks-popover-next-btn");
+    expect(doneBtn.textContent).toContain("Got it!");
+    expect(screen.getByTestId("coachmarks-popover-close-btn")).not.toBeNull();
+    expect(
+      screen.getByTestId("coachmarks-popover-progress-text").textContent,
+    ).toBe("1 of 1");
+
+    // Done still completes the tour.
+    await act(async () => {
+      fireEvent.click(doneBtn);
+      await Promise.resolve();
+    });
+    expect(onDestroyed).toHaveBeenCalledTimes(1);
+    expect(onCancelRequested).not.toHaveBeenCalled();
+  });
+
+  it("non-gated tour still cancels when an anchor is removed (back-compat)", async () => {
+    const a = makeAnchor();
+    const onCancelRequested = vi.fn();
+    const engine = track(createCoachmarksEngine({ onCancelRequested }));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "X" } });
+    });
+    await flushReact();
+    await act(async () => {
+      hideAnchor(a);
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(onCancelRequested).toHaveBeenCalledTimes(1);
+  });
+
+  it("degrade fires onHighlightStarted exactly once across the step's life (anchored entry + degrade)", async () => {
+    const a = makeSelectorAnchor("once-1");
+    const onHighlightStarted = vi.fn();
+    const onDeselected = vi.fn();
+    const engine = track(
+      createCoachmarksEngine({
+        actionGated: true,
+        onHighlightStarted,
+        onDeselected,
+      }),
+    );
+    await act(async () => {
+      engine.drive([
+        { target: '[data-testid="once-1"]', popover: { title: "Only" } },
+      ]);
+    });
+    await flushReact();
+    expect(onHighlightStarted).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      hideAnchor(a);
+      await Promise.resolve();
+    });
+    await flushReact();
+    // Degrade re-mounts the primary (anchored→centered) but must NOT re-fire.
+    expect(onHighlightStarted).toHaveBeenCalledTimes(1);
+    expect(onDeselected).not.toHaveBeenCalled();
+  });
+
+  it("back-compat: non-gated moveNext to a not-laid-out live element cancels exactly once", async () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
+    const a = makeAnchor();
+    const hidden = makeHidden();
+    const onCancelRequested = vi.fn();
+    const engine = track(createCoachmarksEngine({ onCancelRequested }));
+    engine.drive([
+      { element: a, popover: { title: "One" } },
+      { element: hidden, popover: { title: "Two" } },
+    ]);
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await flushReact();
+    engine.moveNext();
+    await act(async () => {
+      vi.runAllTimers();
+    });
+    await flushReact();
+    expect(onCancelRequested).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
 });

@@ -33,8 +33,12 @@ function makeState(step: EngineStep): EngineLiveState {
     cancel: vi.fn(),
     dismissPopover: vi.fn(),
     dropCompanionSilently: vi.fn(),
+    degradeCurrentStep: vi.fn(),
+    fireHighlightStarted: vi.fn(),
     destroyed: false,
     seqId: 1,
+    waitDispose: null,
+    degradeSeq: 0,
   };
 }
 

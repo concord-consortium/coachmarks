@@ -51,6 +51,21 @@ export interface EngineLiveState {
    *  anchor lost its layout box). Adds the index to `dismissedPopoverIndices`
    *  and emits a development warning, but does NOT fire `onPopoverDismissed`. */
   dropCompanionSilently(popoverIndex: number): void;
+  /** Gated degrade-on-removal: re-render the active step's primary as an anchorless
+   *  centered popover (keeping content + step number + buttons) instead of cancelling.
+   *  No-op outside an `actionGated` engine. Does NOT bump `activeIndex`/`seqId`. */
+  degradeCurrentStep(): void;
+  /** Fire `onHighlightStarted` at most once per step (keyed on `seqId:activeIndex`),
+   *  surviving a degrade re-mount of the primary popover. Called by the primary popover
+   *  once mounted and (for anchored steps) positioned. */
+  fireHighlightStarted(activeIndex: number): void;
   destroyed: boolean;
   seqId: number;
+  /** Disposer for a pending wait-for-target, or null when none is in flight. A non-null
+   *  value also means "an advance is committed and waiting" — used as the single-in-flight
+   *  re-entrancy guard and to distinguish degrade case (a) held-during-wait from (b). */
+  waitDispose: (() => void) | null;
+  /** Bumped on each gated degrade so the (otherwise activeIndex-keyed) focus effect can
+   *  re-pull focus to a degraded terminal Done step. */
+  degradeSeq: number;
 }
