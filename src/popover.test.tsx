@@ -894,4 +894,61 @@ describe("Popover", () => {
     render(<Popover store={store} popoverIndex={1} container={container} />);
     expect(screen.queryByTestId("coachmarks-popover-avatar")).toBeNull();
   });
+
+  // --- Image / figure slot (WM-17) ---
+
+  it("renders the image node in a figure slot between title and description", () => {
+    const anchor = makeAnchorEl();
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: anchor,
+      popover: {
+        title: "T",
+        description: "D",
+        image: <svg data-testid="my-figure" aria-hidden="true" />,
+      },
+    };
+    const { store } = makeStore(step);
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    const figure = screen.getByTestId("coachmarks-popover-figure");
+    expect(figure.querySelector("[data-testid='my-figure']")).not.toBeNull();
+
+    // DOM order: title before figure before description.
+    const content = figure.parentElement as HTMLElement;
+    const order = Array.from(content.children).map((c) =>
+      c.getAttribute("data-testid"),
+    );
+    const titleIdx = order.indexOf("coachmarks-popover-title");
+    const figureIdx = order.indexOf("coachmarks-popover-figure");
+    const descIdx = order.indexOf("coachmarks-popover-description");
+    expect(titleIdx).toBeLessThan(figureIdx);
+    expect(figureIdx).toBeLessThan(descIdx);
+  });
+
+  it("omits the figure slot when no image is supplied", () => {
+    const anchor = makeAnchorEl();
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: anchor,
+      popover: { title: "T", description: "D" },
+    };
+    const { store } = makeStore(step);
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    expect(screen.queryByTestId("coachmarks-popover-figure")).toBeNull();
+  });
+
+  it("does not enforce alt — renders the consumer's image element verbatim", () => {
+    const anchor = makeAnchorEl();
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: anchor,
+      // An <img> with no alt: the library renders it as-is (consumer owns a11y).
+      // biome-ignore lint/a11y/useAltText: deliberately testing the library does not enforce alt.
+      popover: { title: "T", image: <img src="x.png" data-testid="raw-img" /> },
+    };
+    const { store } = makeStore(step);
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    const img = screen.getByTestId("raw-img");
+    expect(img.hasAttribute("alt")).toBe(false);
+  });
 });

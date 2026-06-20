@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AnchoredPopoverSection } from "./sections/anchored-popover";
 import { AvatarSection } from "./sections/avatar";
 import { DraggableSection } from "./sections/draggable";
+import { ImagePopoverSection } from "./sections/image-popover";
 import { MultiPopoverGroupSection } from "./sections/multi-popover-group";
 import { MultiStepTourSection } from "./sections/multi-step-tour";
 import { NoAnchorCuesSection } from "./sections/no-anchor-cues";
@@ -52,6 +53,11 @@ const SECTIONS: Section[] = [
     Component: ReducedMotionSection,
   },
   { id: "avatar", label: "9. Avatar badge", Component: AvatarSection },
+  {
+    id: "image",
+    label: "10. Image / figure popover",
+    Component: ImagePopoverSection,
+  },
 ];
 
 export function DemoApp() {

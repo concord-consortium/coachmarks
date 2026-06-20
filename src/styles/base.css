@@ -135,6 +135,18 @@
   display: none;
 }
 
+/* Figure slot — rendered between title and description. The consumer owns the element's
+ * intrinsic sizing/alt; the library just constrains it to the popover width. */
+.coachmarks-popover-figure {
+  margin: 0 0 10px;
+}
+
+.coachmarks-popover-figure :is(img, svg) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .coachmarks-outline-ring {
   position: fixed;
   pointer-events: none;

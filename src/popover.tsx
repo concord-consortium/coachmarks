@@ -720,6 +720,14 @@ function PopoverContent({
               {popoverContent?.title}
             </TitleTag>
           )}
+          {popoverContent?.image && (
+            <div
+              className="coachmarks-popover-figure"
+              data-testid="coachmarks-popover-figure"
+            >
+              {popoverContent.image}
+            </div>
+          )}
           {hasDescription && (
             <p
               className="coachmarks-popover-description"
