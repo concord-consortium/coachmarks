@@ -228,6 +228,43 @@ describe("useKeyboardControl", () => {
     }
   });
 
+  it("ArrowRight/ArrowLeft are inert when allowStepNavigation is false (gated)", () => {
+    renderHook(() =>
+      useKeyboardControl({
+        enabled: true,
+        allowClose: true,
+        allowStepNavigation: false,
+        popoverEl: null,
+        onNext,
+        onPrev,
+        onClose,
+      }),
+    );
+    const right = dispatch("ArrowRight");
+    const left = dispatch("ArrowLeft");
+    expect(onNext).not.toHaveBeenCalled();
+    expect(onPrev).not.toHaveBeenCalled();
+    // Inert keys are not consumed (no preventDefault) so they pass through to the app.
+    expect(right.defaultPrevented).toBe(false);
+    expect(left.defaultPrevented).toBe(false);
+  });
+
+  it("Escape still cancels when allowStepNavigation is false", () => {
+    renderHook(() =>
+      useKeyboardControl({
+        enabled: true,
+        allowClose: true,
+        allowStepNavigation: false,
+        popoverEl: null,
+        onNext,
+        onPrev,
+        onClose,
+      }),
+    );
+    dispatch("Escape");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("removes the listener on unmount", () => {
     const { unmount } = renderHook(() =>
       useKeyboardControl({

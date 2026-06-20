@@ -30,6 +30,9 @@ function isInInteractiveWidget(el: HTMLElement): boolean {
 interface UseKeyboardControlArgs {
   enabled: boolean;
   allowClose: boolean;
+  /** When false (gated tours), ArrowLeft/ArrowRight are inert so the keyboard can't skip
+   *  the gate or retreat. Escape (close) is independent of this flag. Default true. */
+  allowStepNavigation?: boolean;
   popoverEl: HTMLElement | null;
   onNext: () => void;
   onPrev: () => void;
@@ -39,6 +42,7 @@ interface UseKeyboardControlArgs {
 export function useKeyboardControl({
   enabled,
   allowClose,
+  allowStepNavigation = true,
   popoverEl,
   onNext,
   onPrev,
@@ -68,9 +72,11 @@ export function useKeyboardControl({
       }
       switch (e.key) {
         case "ArrowRight":
+          if (!allowStepNavigation) return;
           onNext();
           break;
         case "ArrowLeft":
+          if (!allowStepNavigation) return;
           onPrev();
           break;
         case "Escape":
@@ -84,5 +90,13 @@ export function useKeyboardControl({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [enabled, allowClose, popoverEl, onNext, onPrev, onClose]);
+  }, [
+    enabled,
+    allowClose,
+    allowStepNavigation,
+    popoverEl,
+    onNext,
+    onPrev,
+    onClose,
+  ]);
 }

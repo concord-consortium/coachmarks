@@ -458,6 +458,17 @@ function PopoverContent({
     | "bottom"
     | "left";
 
+  // Gated navigation (computed early — the initial-focus effect below depends on it). Under
+  // actionGated: never show Previous; show Next only on the terminal step (rendered as Done).
+  // The terminal-Done predicate is `isLast && showNext` (the focus exception keys on it).
+  const actionGated = opts.actionGated ?? false;
+  const isFirst = activeIndex === 0;
+  const isLast = activeIndex === stepsLength - 1;
+  const showButtons = opts.showButtons ?? ["next", "previous", "close"];
+  const showPrev = showButtons.includes("previous") && !isFirst && !actionGated;
+  const showNext = showButtons.includes("next") && (!actionGated || isLast);
+  const degradeSeq = useStore(store, (s) => s.degradeSeq);
+
   // Iframe focus pull-out — re-runs on every step transition (activeIndex) so a tour that
   // moves through plugin-iframe contexts keeps document-level keydown listeners live.
   const pullFocusFromIframe = opts.pullFocusFromIframe ?? true;
@@ -471,7 +482,16 @@ function PopoverContent({
 
   // initialFocus — runs on every step transition and on initial popover mount.
   // Per-popover override: only the popover whose spec sets initialFocus (or the primary by default) takes focus.
-  const initialFocus = opts.initialFocus ?? "popover";
+  // Gated tours don't steal focus on advance (every advance follows a student action) —
+  // EXCEPT a Done-terminated terminal step (`isLast && showNext`), whose Done button is the
+  // sole completion affordance and must be focus-reachable for keyboard/SR users. Keyed on
+  // Done-terminated, not position: a final step that is itself action-gated (no Done) keeps
+  // no-focus-steal. `degradeSeq` is in the effect deps so a degrade re-mount re-pulls focus
+  // to a degraded terminal Done (the degrade doesn't bump activeIndex).
+  const initialFocus =
+    actionGated && !(isLast && showNext)
+      ? "none"
+      : (opts.initialFocus ?? "popover");
   const currentPopovers = useStore(store, (s) => s.currentPopovers);
   const focusOwnerIndex = useMemo(() => {
     const explicit = currentPopovers.findIndex((p) => p.initialFocus);
@@ -504,7 +524,7 @@ function PopoverContent({
         }
       }
     }
-  }, [popoverEl, initialFocus, shouldFocus, activeIndex, seqId]);
+  }, [popoverEl, initialFocus, shouldFocus, activeIndex, seqId, degradeSeq]);
 
   // Scroll-into-view (anchored only) — runs on every step transition.
   // Intentionally NOT keyed on `opts.smoothScroll` — changing the option mid-step
@@ -571,7 +591,6 @@ function PopoverContent({
   // Declarative advance trigger (actionGated only): attach `advanceOn.event` to the resolved
   // primary anchor so performing the app action (e.g. clicking Setup) advances the tour.
   // Routing through moveNext() means a lazy next step transparently waits for its target.
-  const actionGated = opts.actionGated ?? false;
   const advanceOn =
     isPrimary && anchored && actionGated
       ? (spec as AnchoredPopover).advanceOn
@@ -604,15 +623,15 @@ function PopoverContent({
   useKeyboardControl({
     enabled: (opts.allowKeyboardControl ?? true) && isPrimary,
     allowClose: opts.allowClose ?? true,
+    // Gated steps advance only on the student's action — Arrow keys must not skip the gate
+    // (ArrowRight) or retreat (ArrowLeft). Escape (cancel) is unaffected.
+    allowStepNavigation: !actionGated,
     popoverEl,
     onNext: () => store.getSnapshot().moveNext(),
     onPrev: () => store.getSnapshot().movePrevious(),
     onClose: onKeyboardClose,
   });
 
-  const isFirst = activeIndex === 0;
-  const isLast = activeIndex === stepsLength - 1;
-  const showButtons = opts.showButtons ?? ["next", "previous", "close"];
   const disabled = new Set(opts.disableButtons ?? []);
   const animationsDisabled = opts.animate === false;
   const draggable = (opts.draggable ?? true) && anchored;
@@ -720,7 +739,7 @@ function PopoverContent({
                 </div>
               )}
               <div className="coachmarks-popover-button-group">
-                {showButtons.includes("previous") && !isFirst && (
+                {showPrev && (
                   <button
                     type="button"
                     className="coachmarks-popover-prev-btn"
@@ -731,7 +750,7 @@ function PopoverContent({
                     {opts.prevBtnText ?? "Previous"}
                   </button>
                 )}
-                {showButtons.includes("next") && (
+                {showNext && (
                   <button
                     type="button"
                     className="coachmarks-popover-next-btn"

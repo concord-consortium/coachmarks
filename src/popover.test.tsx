@@ -792,4 +792,65 @@ describe("Popover", () => {
         .getAttribute("data-coachmarks-popover-index"),
     ).toBe("1");
   });
+
+  // --- Gated navigation: buttons, keyboard, focus (WM-17) ---
+
+  /** Render a primary popover for a gated tour at a given position in a 2-step tour. */
+  function renderGated(activeIndex: number, options: EngineOptions = {}) {
+    const anchor = makeAnchorEl();
+    const anchor2 = makeAnchorEl({
+      left: 300,
+      top: 100,
+      width: 50,
+      height: 30,
+    });
+    const container = makeContainer();
+    const s1: PopoverSpec = { element: anchor, popover: { title: "S1" } };
+    const s2: PopoverSpec = { element: anchor2, popover: { title: "S2" } };
+    const { store } = makeStore(s1, {
+      actionGated: true,
+      showButtons: ["next", "close"],
+      ...options,
+    });
+    act(() => {
+      store.setState((st) => ({ ...st, steps: [s1, s2], activeIndex }));
+    });
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    return { store, container };
+  }
+
+  it("gated intermediate step shows neither Next nor Previous (close only)", () => {
+    renderGated(0, { showButtons: ["next", "previous", "close"] });
+    expect(screen.queryByTestId("coachmarks-popover-next-btn")).toBeNull();
+    expect(screen.queryByTestId("coachmarks-popover-prev-btn")).toBeNull();
+    expect(screen.queryByTestId("coachmarks-popover-close-btn")).not.toBeNull();
+  });
+
+  it("gated terminal step shows the Done button (Next rendered as Done)", () => {
+    renderGated(1, { doneBtnText: "Got it!" });
+    const done = screen.getByTestId("coachmarks-popover-next-btn");
+    expect(done.textContent).toBe("Got it!");
+    expect(screen.queryByTestId("coachmarks-popover-prev-btn")).toBeNull();
+  });
+
+  it("gated intermediate step does not steal focus on entry", () => {
+    const { container } = renderGated(0);
+    const popover = screen.getByTestId("coachmarks-popover");
+    expect(document.activeElement).not.toBe(popover);
+    void container;
+  });
+
+  it("gated Done-terminated terminal step pulls focus to the popover (terminal exception)", () => {
+    renderGated(1, { doneBtnText: "Got it!" });
+    const popover = screen.getByTestId("coachmarks-popover");
+    expect(document.activeElement).toBe(popover);
+  });
+
+  it("final action-gated step (['close'], no Done) keeps no-focus-steal", () => {
+    // Last step but showButtons omits "next" → no Done → not Done-terminated → focus stays.
+    renderGated(1, { showButtons: ["close"] });
+    const popover = screen.getByTestId("coachmarks-popover");
+    expect(screen.queryByTestId("coachmarks-popover-next-btn")).toBeNull();
+    expect(document.activeElement).not.toBe(popover);
+  });
 });
