@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 // base.css is auto-imported by the engine via src/index.ts side-effect import.
 import { AnchoredPopoverSection } from "./sections/anchored-popover";
+import { AvatarSection } from "./sections/avatar";
 import { DraggableSection } from "./sections/draggable";
 import { MultiPopoverGroupSection } from "./sections/multi-popover-group";
 import { MultiStepTourSection } from "./sections/multi-step-tour";
@@ -50,6 +51,7 @@ const SECTIONS: Section[] = [
     label: "8. Reduced motion",
     Component: ReducedMotionSection,
   },
+  { id: "avatar", label: "9. Avatar badge", Component: AvatarSection },
 ];
 
 export function DemoApp() {

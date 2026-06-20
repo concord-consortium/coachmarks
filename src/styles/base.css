@@ -129,6 +129,12 @@
   display: block;
 }
 
+/* Decorative avatar badge — theme-painted; hidden by default (base/codap show no avatar).
+ * The hazbot theme overrides this to position + paint the robot face. */
+.coachmarks-popover-avatar {
+  display: none;
+}
+
 .coachmarks-outline-ring {
   position: fixed;
   pointer-events: none;

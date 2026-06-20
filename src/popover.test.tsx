@@ -853,4 +853,45 @@ describe("Popover", () => {
     expect(screen.queryByTestId("coachmarks-popover-next-btn")).toBeNull();
     expect(document.activeElement).not.toBe(popover);
   });
+
+  // --- Avatar badge (WM-17) ---
+
+  it("renders the decorative avatar on the primary by default (aria-hidden)", () => {
+    const anchor = makeAnchorEl();
+    const container = makeContainer();
+    const step: PopoverSpec = { element: anchor, popover: { title: "T" } };
+    const { store } = makeStore(step);
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    const avatar = screen.getByTestId("coachmarks-popover-avatar");
+    expect(avatar.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("omits the avatar when showAvatar is false", () => {
+    const anchor = makeAnchorEl();
+    const container = makeContainer();
+    const step: PopoverSpec = { element: anchor, popover: { title: "T" } };
+    const { store } = makeStore(step, { showAvatar: false });
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    expect(screen.queryByTestId("coachmarks-popover-avatar")).toBeNull();
+  });
+
+  it("never renders the avatar on a companion popover", () => {
+    const anchor1 = makeAnchorEl();
+    const anchor2 = makeAnchorEl({
+      left: 300,
+      top: 100,
+      width: 50,
+      height: 30,
+    });
+    const container = makeContainer();
+    const group: PopoverGroup = {
+      popovers: [
+        { element: anchor1, popover: { title: "Primary" } },
+        { element: anchor2, popover: { title: "Companion" } },
+      ],
+    };
+    const { store } = makeStore(group);
+    render(<Popover store={store} popoverIndex={1} container={container} />);
+    expect(screen.queryByTestId("coachmarks-popover-avatar")).toBeNull();
+  });
 });

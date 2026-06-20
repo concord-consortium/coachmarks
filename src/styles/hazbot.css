@@ -138,3 +138,19 @@
   background-color: #a4c7f9;
   transform: translate(40%, -40%) scale(0.9);
 }
+
+/* Hazbot robot avatar badge — red circular face overlapping the popover's top-left,
+ * mirroring the close button's top-right placement. Decorative (aria-hidden); the SVG
+ * carries the framing so no border/disc is drawn here. */
+.coachmarks-popover-avatar {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48px;
+  height: 48px;
+  /* Center the disc ~just inside the popover's top-left corner (mirrors the close btn). */
+  transform: translate(-40%, -40%);
+  background: url("./assets/hazbot-avatar.svg") center / contain no-repeat;
+  pointer-events: none;
+}
