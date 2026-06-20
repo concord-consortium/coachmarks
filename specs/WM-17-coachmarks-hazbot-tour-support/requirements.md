@@ -76,7 +76,7 @@ Key constraint motivating change #1: anchors are resolved by the consumer **up f
 - The wildfire-model renderer, `(ruleSetId, categoryId)` map, `arrowText` extractor/`Category` changes, new `data-testid`s, and the authored tours — all in WM-17 (wildfire-model).
 - The final mountain artwork (PI-supplied; wildfire passes it through).
 - CODAP-theme-specific visuals (the badge is hazbot-only).
-- Keeping the library badge art in sync with wildfire's in-app robot is a **known cross-repo coupling**, not an automated guarantee: the committed `hazbot-avatar.svg` is a point-in-time composite of wildfire's `hazbot-back.svg`+`hazbot-eyes.svg`, so a wildfire robot restyle requires a manual re-export (flagged by a provenance comment in the asset). No build-time link enforces parity.
+- Keeping the library badge art in sync with the design / wildfire's in-app robot is a **known cross-repo coupling**, not an automated guarantee: the committed `hazbot-avatar.svg` is a point-in-time composite of the designer-exported Zeplin **Hazbot Coach Mark - Back** + **Hazbot Coach Mark - Eyes** layers, so a design/robot restyle requires a manual re-export (flagged by a provenance comment with the source layer IDs in the asset). No build-time link enforces parity.
 
 ## Open Questions
 
