@@ -3,6 +3,10 @@
 :root {
   --coachmarks-focus-color: #0066cc;
   --coachmarks-ring-color: #444444;
+  /* Outline-ring stroke width. The renderer (outline-ring.tsx) reads this off :root so
+   * it can offset the ring (and inflate its corner radii) to keep the stroke flush just
+   * outside the target regardless of width. Themes may override (hazbot uses 3px). */
+  --coachmarks-ring-width: 2px;
   --coachmarks-z-index: 10001;
   /* Outline ring sits one layer below the popover. Derived from --coachmarks-z-index so
    * a consumer override of the popover z-index lifts the ring with it. */
@@ -150,7 +154,7 @@
 .coachmarks-outline-ring {
   position: fixed;
   pointer-events: none;
-  border: 2px solid var(--coachmarks-ring-color);
+  border: var(--coachmarks-ring-width, 2px) solid var(--coachmarks-ring-color);
   border-radius: 4px;
   z-index: var(--coachmarks-ring-z-index);
   box-sizing: border-box;

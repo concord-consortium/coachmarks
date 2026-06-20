@@ -67,6 +67,50 @@ describe("OutlineRings", () => {
     expect(ring.style.height).toBe("34px");
   });
 
+  it("follows the target's per-corner radius (target radius + 2px outset)", () => {
+    const target = makeAnchor({ top: 10, left: 20, width: 40, height: 30 });
+    // Tab-shaped control: rounded top corners, square bottom (like the bottom-bar end buttons).
+    target.style.borderTopLeftRadius = "10px";
+    target.style.borderTopRightRadius = "10px";
+    target.style.borderBottomRightRadius = "0px";
+    target.style.borderBottomLeftRadius = "0px";
+    const container = makeContainer();
+    const step: PopoverSpec = { element: target, popover: { title: "T" } };
+    const store = createStore<EngineLiveState>(makeState(step));
+    render(<OutlineRings store={store} container={container} />);
+    const ring = screen.getByTestId("coachmarks-outline-ring");
+    expect(ring.style.borderTopLeftRadius).toBe("12px");
+    expect(ring.style.borderTopRightRadius).toBe("12px");
+    expect(ring.style.borderBottomRightRadius).toBe("2px");
+    expect(ring.style.borderBottomLeftRadius).toBe("2px");
+  });
+
+  it("offsets the ring by the themed --coachmarks-ring-width (3px) so the stroke stays flush", () => {
+    document.documentElement.style.setProperty(
+      "--coachmarks-ring-width",
+      "3px",
+    );
+    try {
+      const target = makeAnchor({ top: 10, left: 20, width: 40, height: 30 });
+      target.style.borderTopLeftRadius = "9px";
+      target.style.borderTopRightRadius = "9px";
+      const container = makeContainer();
+      const step: PopoverSpec = { element: target, popover: { title: "T" } };
+      const store = createStore<EngineLiveState>(makeState(step));
+      render(<OutlineRings store={store} container={container} />);
+      const ring = screen.getByTestId("coachmarks-outline-ring");
+      // Inflated by 3px on every side, radii += 3.
+      expect(ring.style.top).toBe("7px");
+      expect(ring.style.left).toBe("17px");
+      expect(ring.style.width).toBe("46px");
+      expect(ring.style.height).toBe("36px");
+      expect(ring.style.borderTopLeftRadius).toBe("12px");
+      expect(ring.style.borderBottomLeftRadius).toBe("3px");
+    } finally {
+      document.documentElement.style.removeProperty("--coachmarks-ring-width");
+    }
+  });
+
   it("renders no ring for a viewport popover (no anchor element)", () => {
     const container = makeContainer();
     const step: PopoverSpec = {

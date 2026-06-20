@@ -19,6 +19,8 @@
   --coachmarks-popover-halo: #ffffff;
   --coachmarks-popover-text: #222222;
   --coachmarks-ring-color: #0050c4;
+  /* Zeplin Hazbot design: 3px outline ring, matching the 3px popover border. */
+  --coachmarks-ring-width: 3px;
   --coachmarks-focus-color: #0050c4;
   --coachmarks-button-bg: #c1daff;
   --coachmarks-button-border: #797979;
@@ -70,6 +72,15 @@
 
 .coachmarks-popover-description:first-child {
   padding-right: 0;
+}
+
+/* Step "Step N of M" label — Zeplin: Lato 16px regular, centered, in the theme blue. */
+.coachmarks-popover-progress-text {
+  font-family: Lato, sans-serif;
+  font-size: 16px;
+  font-weight: normal;
+  text-align: center;
+  color: var(--coachmarks-popover-border);
 }
 
 .coachmarks-popover-prev-btn,
