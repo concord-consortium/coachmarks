@@ -147,12 +147,14 @@
 .coachmarks-popover-avatar {
   display: block;
   float: left;
-  width: 46px;
-  height: 46px;
-  /* Small negative top/left so the badge nudges toward the corner but keeps padding from
-   * the edges (sits mostly inside, overlapping the rounded corner). margin-right is the gap
-   * before the wrapped text. */
-  margin: -4px 10px 2px -4px;
+  /* Zeplin: 52×52, 8px from the bubble's left edge and 6px from the top (sits inside,
+   * dropping below the second text line). The popover has a 3px border + 12px content
+   * padding (= 15px from the outer edge to this float's normal position), so the negative
+   * margins place the badge at ~8px/6px from the outer edge. margin-right is the gap to the
+   * wrapped text. */
+  width: 52px;
+  height: 52px;
+  margin: -5px 12px 0 -5px;
   shape-outside: circle(50%);
   background: url("./assets/hazbot-avatar.svg") center / contain no-repeat;
   pointer-events: none;
