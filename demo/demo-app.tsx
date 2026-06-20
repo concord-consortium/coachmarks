@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AnchoredPopoverSection } from "./sections/anchored-popover";
 import { AvatarSection } from "./sections/avatar";
 import { DraggableSection } from "./sections/draggable";
+import { GatedTourSection } from "./sections/gated-tour";
 import { ImagePopoverSection } from "./sections/image-popover";
 import { MultiPopoverGroupSection } from "./sections/multi-popover-group";
 import { MultiStepTourSection } from "./sections/multi-step-tour";
@@ -57,6 +58,11 @@ const SECTIONS: Section[] = [
     id: "image",
     label: "10. Image / figure popover",
     Component: ImagePopoverSection,
+  },
+  {
+    id: "gated",
+    label: "11. Gated tour",
+    Component: GatedTourSection,
   },
 ];
 
