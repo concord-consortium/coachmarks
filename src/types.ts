@@ -1,5 +1,37 @@
 import type { ReactNode } from "react";
 
+/** Declares when a gated step advances in response to a DOM event on its anchor.
+ *  The library attaches the listener to the resolved anchor and removes it on step exit. */
+export type AdvanceTrigger = {
+  /** DOM event on the step's anchor that advances the step. Narrow union (only authored
+   *  need is "click"); widen later if a real non-click case appears (non-breaking). */
+  event: "click";
+};
+
+/** Shared popover content. `image` renders in a figure slot between title and description. */
+export type PopoverContentBase = {
+  title?: string;
+  description?: string;
+  /** Optional figure/illustration. The consumer owns the element's alt/aria; for a
+   *  meaningful image whose text equivalent is already in `description`, pass an
+   *  `aria-hidden` element. Rendered between title and description. */
+  image?: ReactNode;
+};
+
+/** Layout/placement fields shared by anchored and selector popovers. */
+export type AnchoredPopoverContent = PopoverContentBase & {
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  /** Fixed popover width. Number → pixels; string → raw CSS value (e.g. "20rem").
+   *  Overrides the default `max-width: 320px` so larger values are honored. */
+  width?: number | string;
+  /** Cartesian shift applied to the popover's natural placement. Positive `x` = right;
+   *  positive `y` = down. Combines with the engine-level `popoverOffset` (which sets the
+   *  baseline gap between popover and anchor). Useful for fine-tuning a step that needs
+   *  to nudge clear of overlapping UI without changing `side`/`align`. */
+  anchorOffset?: { x?: number; y?: number };
+};
+
 export type AnchoredPopover = {
   element: HTMLElement;
   /** Element the outline (focus) ring is drawn around. Defaults to `element`.
@@ -7,22 +39,29 @@ export type AnchoredPopover = {
    *  anchor/center the popover over a small inner icon while ringing its larger
    *  interactive container. */
   ringElement?: HTMLElement;
-  popover?: {
-    title?: string;
-    description?: string;
-    side?: "top" | "right" | "bottom" | "left";
-    align?: "start" | "center" | "end";
-    /** Fixed popover width. Number → pixels; string → raw CSS value (e.g. "20rem").
-     *  Overrides the default `max-width: 320px` so larger values are honored. */
-    width?: number | string;
-    /** Cartesian shift applied to the popover's natural placement. Positive `x` = right;
-     *  positive `y` = down. Combines with the engine-level `popoverOffset` (which sets the
-     *  baseline gap between popover and anchor). Useful for fine-tuning a step that needs
-     *  to nudge clear of overlapping UI without changing `side`/`align`. */
-    anchorOffset?: { x?: number; y?: number };
-  };
+  /** Action-gated advance: advance when `advanceOn.event` fires on `element`.
+   *  Honored only in an `actionGated` engine; ignored otherwise. */
+  advanceOn?: AdvanceTrigger;
+  popover?: AnchoredPopoverContent;
   /** Within a PopoverGroup, focus this popover on step entry instead of popovers[0]. First-set-wins
    *  if multiple popovers in a group set this. Has no effect on a bare-popover step. */
+  initialFocus?: boolean;
+};
+
+/** Like AnchoredPopover, but the anchor is a CSS selector resolved at step entry (and
+ *  awaited if absent) instead of a live element. For tours whose later steps target
+ *  controls that only appear after earlier steps' actions. Resolved to an element-anchored
+ *  spec by the engine before it reaches the render layer. */
+export type SelectorPopover = {
+  element?: undefined;
+  /** CSS selector resolved against the document when the step becomes active. If it does
+   *  not yet match a laid-out element, the engine waits (MutationObserver) before entering
+   *  the step, keeping the prior step shown. First match wins (`querySelector`). */
+  target: string;
+  /** Selector for the outline-ring target. Defaults to `target`. */
+  ringTarget?: string;
+  advanceOn?: AdvanceTrigger;
+  popover?: AnchoredPopoverContent;
   initialFocus?: boolean;
 };
 
@@ -39,9 +78,8 @@ export type ViewportPosition =
 
 export type ViewportPopover = {
   element?: undefined;
-  popover: {
-    title?: string;
-    description?: string;
+  target?: undefined;
+  popover: PopoverContentBase & {
     position: ViewportPosition;
     viewportOffset?: { x?: number; y?: number };
     /** Fixed popover width. Number → pixels; string → raw CSS value (e.g. "20rem").
@@ -59,7 +97,7 @@ export type ViewportPopover = {
   initialFocus?: boolean;
 };
 
-export type PopoverSpec = AnchoredPopover | ViewportPopover;
+export type PopoverSpec = AnchoredPopover | SelectorPopover | ViewportPopover;
 
 export type PopoverGroup = {
   /** Non-empty array. popovers[0] is the *primary* — it owns the step's Next / Previous /
@@ -73,6 +111,20 @@ export type PopoverGroup = {
 export type EngineStep = PopoverSpec | PopoverGroup;
 
 export interface EngineOptions {
+  /** Action-gated tour: steps advance on the student's action (`advanceOn` / imperative
+   *  `moveNext()`), not passive buttons. Hides Next/Previous on intermediate steps (the
+   *  terminal Done button is kept), suppresses Arrow-key navigation, does not pull focus on
+   *  advance, enables wait-for-target on selector-anchored steps, and degrades a step to an
+   *  anchorless centered popover (instead of cancelling) when its anchor leaves layout.
+   *  Default false (today's button-driven tours, unchanged). */
+  actionGated?: boolean;
+
+  /** Render the hazbot-theme robot avatar badge on this engine's popovers. Default true.
+   *  Only the hazbot theme paints it (base/codap hide it via CSS), so this is effectively a
+   *  hazbot-theme opt-out. Set false on a popover that should not show it (e.g. an intro
+   *  highlight that already points at the robot). The badge is decorative (`aria-hidden`). */
+  showAvatar?: boolean;
+
   showButtons?: ("next" | "previous" | "close")[];
   disableButtons?: ("next" | "previous")[];
   showProgress?: boolean;

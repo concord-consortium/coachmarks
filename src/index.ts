@@ -2,6 +2,7 @@ import "./styles/base.css";
 
 export { createCoachmarksEngine } from "./engine";
 export type {
+  AdvanceTrigger,
   AnchoredPopover,
   CreateCoachmarksEngineArgs,
   EngineCallbacks,
@@ -11,5 +12,6 @@ export type {
   EngineStep,
   PopoverGroup,
   PopoverSpec,
+  SelectorPopover,
   ViewportPopover,
 } from "./types";
