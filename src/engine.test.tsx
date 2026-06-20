@@ -1125,6 +1125,67 @@ describe("createCoachmarksEngine", () => {
     expect(onDeselected).not.toHaveBeenCalled();
   });
 
+  it("gated advanceOn:{event:'click'} on the step-1 anchor advances to step 2", async () => {
+    const a1 = makeSelectorAnchor("adv-1");
+    makeSelectorAnchor("adv-2", { left: 300, top: 100, width: 50, height: 30 });
+    const onDeselected = vi.fn();
+    const engine = track(
+      createCoachmarksEngine({ actionGated: true, onDeselected }),
+    );
+    await act(async () => {
+      engine.drive([
+        {
+          target: '[data-testid="adv-1"]',
+          advanceOn: { event: "click" },
+          popover: { title: "One" },
+        },
+        { target: '[data-testid="adv-2"]', popover: { title: "Two" } },
+      ]);
+    });
+    await flushReact();
+    expect(primaryTitle()).toBe("One");
+
+    // Clicking the real app control (the anchor) advances the tour.
+    await act(async () => {
+      fireEvent.click(a1);
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(onDeselected).toHaveBeenCalledTimes(1);
+    expect(primaryTitle()).toBe("Two");
+  });
+
+  it("advanceOn is ignored on a non-gated engine (listener not attached)", async () => {
+    const a1 = makeSelectorAnchor("noadv-1");
+    makeSelectorAnchor("noadv-2", {
+      left: 300,
+      top: 100,
+      width: 50,
+      height: 30,
+    });
+    const onDeselected = vi.fn();
+    // No actionGated → advanceOn must not advance. (Selector steps still resolve.)
+    const engine = track(createCoachmarksEngine({ onDeselected }));
+    await act(async () => {
+      engine.drive([
+        {
+          target: '[data-testid="noadv-1"]',
+          advanceOn: { event: "click" },
+          popover: { title: "One" },
+        },
+        { target: '[data-testid="noadv-2"]', popover: { title: "Two" } },
+      ]);
+    });
+    await flushReact();
+    await act(async () => {
+      fireEvent.click(a1);
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(onDeselected).not.toHaveBeenCalled();
+    expect(primaryTitle()).toBe("One");
+  });
+
   it("back-compat: non-gated moveNext to a not-laid-out live element cancels exactly once", async () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
     const a = makeAnchor();

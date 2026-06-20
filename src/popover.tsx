@@ -33,6 +33,7 @@ import type {
   ViewportPopover,
   ViewportPosition,
 } from "./types";
+import { useAdvanceTrigger } from "./use-advance-trigger";
 import { useKeyboardControl } from "./use-keyboard-control";
 import { usePopoverDrag } from "./use-popover-drag";
 import { useReducedMotion } from "./use-reduced-motion";
@@ -565,6 +566,21 @@ function PopoverContent({
   useTargetWatcher(
     anchored ? (spec as AnchoredPopover).element : null,
     onTargetRemoved,
+  );
+
+  // Declarative advance trigger (actionGated only): attach `advanceOn.event` to the resolved
+  // primary anchor so performing the app action (e.g. clicking Setup) advances the tour.
+  // Routing through moveNext() means a lazy next step transparently waits for its target.
+  const actionGated = opts.actionGated ?? false;
+  const advanceOn =
+    isPrimary && anchored && actionGated
+      ? (spec as AnchoredPopover).advanceOn
+      : undefined;
+  const onAdvance = useCallback(() => store.getSnapshot().moveNext(), [store]);
+  useAdvanceTrigger(
+    anchored ? (spec as AnchoredPopover).element : null,
+    advanceOn,
+    onAdvance,
   );
 
   // Close-button onClick: bare-popover and "group" steps cancel the step directly;
