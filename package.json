@@ -1,6 +1,6 @@
 {
   "name": "@concord-consortium/coachmarks",
-  "version": "0.0.1-pre.7",
+  "version": "0.0.1-pre.8",
   "description": "Shared popover/pointer library for tour-style coachmarks across Concord Consortium apps.",
   "keywords": [
     "react",
