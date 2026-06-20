@@ -703,14 +703,14 @@ function PopoverContent({
         data-coachmarks-popover-index={popoverIndex}
         onPointerDown={draggable ? onPointerDown : undefined}
       >
-        {isPrimary && (opts.showAvatar ?? true) && (
-          <span
-            className="coachmarks-popover-avatar"
-            aria-hidden="true"
-            data-testid="coachmarks-popover-avatar"
-          />
-        )}
         <div className="coachmarks-popover-content">
+          {isPrimary && (opts.showAvatar ?? true) && (
+            <span
+              className="coachmarks-popover-avatar"
+              aria-hidden="true"
+              data-testid="coachmarks-popover-avatar"
+            />
+          )}
           {hasTitle && (
             <TitleTag
               className="coachmarks-popover-title"

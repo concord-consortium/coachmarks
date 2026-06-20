@@ -856,7 +856,7 @@ describe("Popover", () => {
 
   // --- Avatar badge (WM-17) ---
 
-  it("renders the decorative avatar on the primary by default (aria-hidden)", () => {
+  it("renders the decorative avatar inside the content container (so text floats around it)", () => {
     const anchor = makeAnchorEl();
     const container = makeContainer();
     const step: PopoverSpec = { element: anchor, popover: { title: "T" } };
@@ -864,6 +864,10 @@ describe("Popover", () => {
     render(<Popover store={store} popoverIndex={0} container={container} />);
     const avatar = screen.getByTestId("coachmarks-popover-avatar");
     expect(avatar.getAttribute("aria-hidden")).toBe("true");
+    // The avatar must live inside the content flow (it floats; the title/description
+    // wrap around it) — not as an absolutely-positioned sibling of the content.
+    expect(avatar.parentElement?.className).toBe("coachmarks-popover-content");
+    expect(avatar.previousElementSibling).toBeNull();
   });
 
   it("omits the avatar when showAvatar is false", () => {

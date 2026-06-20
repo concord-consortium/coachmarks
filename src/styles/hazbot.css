@@ -139,18 +139,21 @@
   transform: translate(40%, -40%) scale(0.9);
 }
 
-/* Hazbot robot avatar badge — red circular face overlapping the popover's top-left,
- * mirroring the close button's top-right placement. Decorative (aria-hidden); the SVG
- * carries the framing so no border/disc is drawn here. */
+/* Hazbot robot avatar badge — red robot face overlapping the popover's top-left, per the
+ * Zeplin design. It is a float (not absolutely positioned) inside the content flow, so the
+ * title/description wrap to its right and lines below the badge reclaim the full width.
+ * Negative top/left margins pull it up-and-out over the corner (the popover doesn't clip).
+ * Decorative (aria-hidden); the SVG carries the framing so no disc/border is drawn here. */
 .coachmarks-popover-avatar {
   display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 48px;
-  height: 48px;
-  /* Center the disc ~just inside the popover's top-left corner (mirrors the close btn). */
-  transform: translate(-40%, -40%);
+  float: left;
+  width: 46px;
+  height: 46px;
+  /* Small negative top/left so the badge nudges toward the corner but keeps padding from
+   * the edges (sits mostly inside, overlapping the rounded corner). margin-right is the gap
+   * before the wrapped text. */
+  margin: -4px 10px 2px -4px;
+  shape-outside: circle(50%);
   background: url("./assets/hazbot-avatar.svg") center / contain no-repeat;
   pointer-events: none;
 }

@@ -24,9 +24,10 @@ export function AvatarSection() {
     engine.highlight({
       element: anchor,
       popover: {
-        title: "Hazbot",
+        // No title — matches wildfire's description-only hazbot popovers so the avatar
+        // overlap reads against the body text the way the Zeplin design shows it.
         description: showAvatar
-          ? "Default: the robot avatar badge overlaps the top-left corner."
+          ? "Place one spark in Zone 1 and one spark in Zone 2, then run the model again."
           : "showAvatar: false — the badge is suppressed on this popover.",
       },
     });
