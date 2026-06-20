@@ -1125,6 +1125,56 @@ describe("createCoachmarksEngine", () => {
     expect(onDeselected).not.toHaveBeenCalled();
   });
 
+  it("an imperative advance to a non-selector step during a pending wait is a no-op", async () => {
+    // Regression: the re-entrancy guard must cover ALL advances during a wait, not just
+    // selector ones — otherwise a moveTo() to a live-element step leaks the pending wait.
+    makeSelectorAnchor("mix-0");
+    const live = makeAnchor({ left: 500, top: 100, width: 50, height: 30 });
+    const onDeselected = vi.fn();
+    const engine = track(
+      createCoachmarksEngine({ actionGated: true, onDeselected }),
+    );
+    await act(async () => {
+      engine.drive([
+        { target: '[data-testid="mix-0"]', popover: { title: "Zero" } },
+        { target: '[data-testid="mix-1"]', popover: { title: "One" } },
+        { element: live, popover: { title: "Two" } },
+      ]);
+    });
+    await flushReact();
+
+    // Advance to step 1 (absent) → hold step 0 and wait.
+    await act(async () => {
+      engine.moveNext();
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(primaryTitle()).toBe("Zero");
+
+    // Imperative jump to the live-element step 2 during the wait must be ignored.
+    await act(async () => {
+      engine.moveTo(2);
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(primaryTitle()).toBe("Zero");
+    expect(onDeselected).not.toHaveBeenCalled();
+
+    // The original wait still resolves to step 1 (single transition, no leak to step 2).
+    await act(async () => {
+      makeSelectorAnchor("mix-1", {
+        left: 300,
+        top: 100,
+        width: 50,
+        height: 30,
+      });
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(onDeselected).toHaveBeenCalledTimes(1);
+    expect(primaryTitle()).toBe("One");
+  });
+
   it("gated advanceOn:{event:'click'} on the step-1 anchor advances to step 2", async () => {
     const a1 = makeSelectorAnchor("adv-1");
     makeSelectorAnchor("adv-2", { left: 300, top: 100, width: 50, height: 30 });

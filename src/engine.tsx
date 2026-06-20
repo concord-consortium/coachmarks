@@ -251,6 +251,11 @@ export function createCoachmarksEngine(
   function goToStep(index: number, isInitial: boolean) {
     const s = store.getSnapshot();
     if (s.destroyed) return;
+    // Single in-flight wait (re-entrancy guard): while a wait-for-target is pending the engine
+    // is committed to leaving the current step for the already-chosen next index, so no-op ANY
+    // new advance — including an imperative move to a non-selector step — until it resolves.
+    // Otherwise the pending wait leaks and later fires a second transition.
+    if (s.waitDispose) return;
     const step = s.steps[index];
     if (!step) return;
     const primary = popoversOf(step)[0];
@@ -263,10 +268,6 @@ export function createCoachmarksEngine(
         return;
       }
       // Target absent/not-laid-out: wait for it to appear, holding the current step.
-      // Re-entrancy guard: at most one wait in flight — a second advance while waiting
-      // targets the same unchanged `index`, so no-op it (the in-flight wait already
-      // covers it). This prevents double leaveStep/enterStep when the target appears.
-      if (s.waitDispose) return;
       const dispose = waitForTarget(primary.target, () => {
         const cur = store.getSnapshot();
         if (cur.destroyed || cur.seqId !== seqId) return;
