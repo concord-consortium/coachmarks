@@ -986,6 +986,7 @@ describe("createCoachmarksEngine", () => {
     const engine = track(
       createCoachmarksEngine({
         actionGated: true,
+        onTargetLost: "center",
         onCancelRequested,
         onDeselected,
       }),
@@ -1038,6 +1039,7 @@ describe("createCoachmarksEngine", () => {
     const engine = track(
       createCoachmarksEngine({
         actionGated: true,
+        onTargetLost: "center",
         showButtons: ["next", "close"],
         showProgress: true,
         doneBtnText: "Got it!",
@@ -1096,6 +1098,30 @@ describe("createCoachmarksEngine", () => {
     expect(onCancelRequested).toHaveBeenCalledTimes(1);
   });
 
+  it('gated tour closes (does not degrade) when an anchor is removed under the default onTargetLost: "close"', async () => {
+    const a = makeSelectorAnchor("close-1");
+    const onCancelRequested = vi.fn();
+    // actionGated, but onTargetLost left at its "close" default.
+    const engine = track(
+      createCoachmarksEngine({ actionGated: true, onCancelRequested }),
+    );
+    await act(async () => {
+      engine.drive([
+        { target: '[data-testid="close-1"]', popover: { title: "Only" } },
+      ]);
+    });
+    await flushReact();
+    expect(primaryTitle()).toBe("Only");
+
+    await act(async () => {
+      hideAnchor(a);
+      await Promise.resolve();
+    });
+    await flushReact();
+    // Requests cancel (host tears down) instead of re-floating as a centered popover.
+    expect(onCancelRequested).toHaveBeenCalledTimes(1);
+  });
+
   it("degrade fires onHighlightStarted exactly once across the step's life (anchored entry + degrade)", async () => {
     const a = makeSelectorAnchor("once-1");
     const onHighlightStarted = vi.fn();
@@ -1103,6 +1129,7 @@ describe("createCoachmarksEngine", () => {
     const engine = track(
       createCoachmarksEngine({
         actionGated: true,
+        onTargetLost: "center",
         onHighlightStarted,
         onDeselected,
       }),

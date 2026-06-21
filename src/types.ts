@@ -114,10 +114,17 @@ export interface EngineOptions {
   /** Action-gated tour: steps advance on the student's action (`advanceOn` / imperative
    *  `moveNext()`), not passive buttons. Hides Next/Previous on intermediate steps (the
    *  terminal Done button is kept), suppresses Arrow-key navigation, does not pull focus on
-   *  advance, enables wait-for-target on selector-anchored steps, and degrades a step to an
-   *  anchorless centered popover (instead of cancelling) when its anchor leaves layout.
+   *  advance, and enables wait-for-target on selector-anchored steps. Its behavior when a
+   *  step's anchor leaves layout is governed by `onTargetLost`.
    *  Default false (today's button-driven tours, unchanged). */
   actionGated?: boolean;
+
+  /** What an `actionGated` step does when its primary anchor leaves layout:
+   *  - "close" (default): close the tour (same teardown as a user-initiated cancel).
+   *  - "center": degrade the step to an anchorless centered popover (same content / step
+   *    number / buttons, no arrow) and keep the tour alive.
+   *  Ignored outside an `actionGated` engine (non-gated tours always close on anchor loss). */
+  onTargetLost?: "close" | "center";
 
   /** Render the hazbot-theme robot avatar badge on this engine's popovers. Default true.
    *  Only the hazbot theme paints it (base/codap hide it via CSS), so this is effectively a

@@ -574,9 +574,10 @@ function PopoverContent({
     const behavior = dismissBehaviorOf(s.currentStep);
     if (behavior === "individual" && popoverIndex > 0) {
       s.dropCompanionSilently(popoverIndex);
-    } else if (s.options.actionGated) {
-      // Gated degrade-on-removal: a removed anchor re-floats the step as a centered
-      // popover instead of cancelling (held-during-wait and terminal cases).
+    } else if (s.options.actionGated && s.options.onTargetLost === "center") {
+      // Gated degrade-on-removal (opt-in via onTargetLost: "center"): a removed anchor
+      // re-floats the step as a centered popover instead of cancelling (held-during-wait
+      // and terminal cases). Default (onTargetLost "close") falls through to cancel.
       s.degradeCurrentStep();
     } else {
       s.cancel();
