@@ -37,6 +37,7 @@ import { useAdvanceTrigger } from "./use-advance-trigger";
 import { useKeyboardControl } from "./use-keyboard-control";
 import { usePopoverDrag } from "./use-popover-drag";
 import { useReducedMotion } from "./use-reduced-motion";
+import { useTargetUnclickable } from "./use-target-unclickable";
 import { useTargetWatcher } from "./use-target-watcher";
 
 interface PopoverProps {
@@ -459,14 +460,20 @@ function PopoverContent({
     | "left";
 
   // Gated navigation (computed early — the initial-focus effect below depends on it). Under
-  // actionGated: never show Previous; show Next only on the terminal step (rendered as Done).
-  // The terminal-Done predicate is `isLast && showNext` (the focus exception keys on it).
+  // actionGated: never show Previous; show Next only on the terminal step (rendered as Done)
+  // or on a step whose anchor is un-clickable, which would otherwise be a dead end. The
+  // terminal-Done predicate is `isLast && showNext` (the focus exception keys on it).
   const actionGated = opts.actionGated ?? false;
   const isFirst = activeIndex === 0;
   const isLast = activeIndex === stepsLength - 1;
   const showButtons = opts.showButtons ?? ["next", "previous", "close"];
   const showPrev = showButtons.includes("previous") && !isFirst && !actionGated;
-  const showNext = showButtons.includes("next") && (!actionGated || isLast);
+  const targetUnclickable = useTargetUnclickable(
+    anchored ? (spec as AnchoredPopover).element : null,
+  );
+  const showNext =
+    showButtons.includes("next") &&
+    (!actionGated || isLast || targetUnclickable);
   const degradeSeq = useStore(store, (s) => s.degradeSeq);
 
   // Iframe focus pull-out — re-runs on every step transition (activeIndex) so a tour that

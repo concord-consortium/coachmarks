@@ -1285,4 +1285,89 @@ describe("createCoachmarksEngine", () => {
     expect(onCancelRequested).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
+  // --- Continue affordance on an un-clickable gated anchor ---
+
+  async function driveTwoStepGated(
+    a1: HTMLButtonElement,
+    a2: HTMLButtonElement,
+  ) {
+    const engine = track(
+      createCoachmarksEngine({
+        actionGated: true,
+        showButtons: ["next", "close"],
+        nextBtnText: "Continue",
+      }),
+    );
+    await act(async () => {
+      engine.drive([
+        {
+          element: a1,
+          advanceOn: { event: "click" },
+          popover: { title: "One" },
+        },
+        { element: a2, popover: { title: "Two" } },
+      ]);
+    });
+  }
+
+  const nextBtn = () => screen.queryByTestId("coachmarks-popover-next-btn");
+
+  it("gated step with a live anchor shows no Next button", async () => {
+    const a1 = makeAnchor();
+    const a2 = makeAnchor({ left: 300, top: 100, width: 50, height: 30 });
+    await driveTwoStepGated(a1, a2);
+    await flushReact();
+    expect(primaryTitle()).toBe("One");
+    expect(nextBtn()).toBeNull();
+  });
+
+  it("gated step grows a Continue button when its anchor is disabled mid-step, and it advances", async () => {
+    const a1 = makeAnchor();
+    const a2 = makeAnchor({ left: 300, top: 100, width: 50, height: 30 });
+    await driveTwoStepGated(a1, a2);
+    await flushReact();
+    expect(nextBtn()).toBeNull();
+
+    await act(async () => {
+      a1.disabled = true;
+      // Two ticks: one for the MutationObserver record, one for the setState it queues.
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(nextBtn()).not.toBeNull();
+    expect(nextBtn()?.textContent).toBe("Continue");
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("coachmarks-popover-next-btn"));
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(primaryTitle()).toBe("Two");
+  });
+
+  it("gated step entered with an already-disabled anchor shows Continue immediately", async () => {
+    const a1 = makeAnchor();
+    const a2 = makeAnchor({ left: 300, top: 100, width: 50, height: 30 });
+    a1.disabled = true;
+    await driveTwoStepGated(a1, a2);
+    await flushReact();
+    expect(primaryTitle()).toBe("One");
+    expect(nextBtn()).not.toBeNull();
+  });
+
+  it("Continue disappears again when the anchor is re-enabled", async () => {
+    const a1 = makeAnchor();
+    const a2 = makeAnchor({ left: 300, top: 100, width: 50, height: 30 });
+    a1.disabled = true;
+    await driveTwoStepGated(a1, a2);
+    await flushReact();
+    expect(nextBtn()).not.toBeNull();
+
+    await act(async () => {
+      a1.disabled = false;
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(nextBtn()).toBeNull();
+  });
 });
