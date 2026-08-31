@@ -1,4 +1,4 @@
-import { FloatingPortal } from "@floating-ui/react";
+import { FloatingPortal, autoUpdate } from "@floating-ui/react";
 import { useEffect, useState } from "react";
 import type { EngineLiveState } from "./engine-state";
 import { type Store, useStore } from "./store";
@@ -85,6 +85,10 @@ interface OneProps {
 function OutlineRing({ target, store, container }: OneProps) {
   const refreshTick = useStore(store, (s) => s.refreshTick);
   const [rect, setRect] = useState<RingRect | null>(null);
+  // Held in state, not a ref, so populating it re-runs the effect below: FloatingPortal
+  // mounts its children on a later render than this component's first commit, so the
+  // element does not exist yet when the effect first runs.
+  const [ringEl, setRingEl] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void refreshTick;
@@ -123,26 +127,25 @@ function OutlineRing({ target, store, container }: OneProps) {
           : next,
       );
     };
-    measure();
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
-    const ro =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(measure)
-        : null;
-    ro?.observe(target);
-    return () => {
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
-      ro?.disconnect();
-    };
-  }, [target, refreshTick]);
+    // Before the ring element exists, measure once so the first paint is positioned;
+    // the effect re-runs with the element and subscribes properly.
+    if (!ringEl) {
+      measure();
+      return;
+    }
+    // The same tracker the popover uses, so the ring and the bubble it belongs to follow
+    // the target on identical triggers. Its `layoutShift` observer is what keeps the ring
+    // on a target that MOVES without resizing (a neighboring panel opening and re-centering
+    // it, say): scroll, window-resize and ResizeObserver all stay silent in that case.
+    return autoUpdate(target, ringEl, measure);
+  }, [target, refreshTick, ringEl]);
 
   if (!rect) return null;
 
   return (
     <FloatingPortal root={container}>
       <div
+        ref={setRingEl}
         aria-hidden="true"
         data-testid="coachmarks-outline-ring"
         className="coachmarks-outline-ring"
