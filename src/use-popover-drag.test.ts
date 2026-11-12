@@ -137,7 +137,7 @@ describe("usePopoverDrag", () => {
     expect(capture).not.toHaveBeenCalled();
   });
 
-  it("captures the pointer on the popover when a drag starts", () => {
+  it("captures the pointer on the popover once, at the first move of a drag", () => {
     const popoverEl = makePopoverEl();
     const capture = vi.fn();
     popoverEl.setPointerCapture = capture;
@@ -146,8 +146,66 @@ describe("usePopoverDrag", () => {
     act(() => {
       result.current.onPointerDown(pointerDownEvent());
     });
+    expect(capture).not.toHaveBeenCalled();
+
+    const move = (clientX: number) =>
+      Object.assign(new MouseEvent("pointermove", { clientX, clientY: 130 }), {
+        pointerId: 7,
+      });
+    act(() => {
+      document.dispatchEvent(move(160));
+      document.dispatchEvent(move(170));
+    });
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(capture).toHaveBeenCalledWith(7);
+  });
+
+  it("captures the pointer when it leaves the popover before any move reaches the page", () => {
+    const popoverEl = makePopoverEl();
+    const capture = vi.fn();
+    popoverEl.setPointerCapture = capture;
+    const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent());
+    });
+    popoverEl.dispatchEvent(
+      Object.assign(new MouseEvent("pointerleave"), { pointerId: 7 }),
+    );
 
     expect(capture).toHaveBeenCalledWith(7);
+  });
+
+  it("releases the pointer capture when a step change ends the drag", () => {
+    const popoverEl = makePopoverEl();
+    let held = false;
+    popoverEl.setPointerCapture = vi.fn(() => {
+      held = true;
+    });
+    popoverEl.hasPointerCapture = vi.fn(() => held);
+    const release = vi.fn(() => {
+      held = false;
+    });
+    popoverEl.releasePointerCapture = release;
+    const { result, rerender } = renderHook(
+      ({ key }) => usePopoverDrag(key, popoverEl),
+      { initialProps: { key: "step-1" } },
+    );
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent());
+    });
+    act(() => {
+      document.dispatchEvent(
+        Object.assign(
+          new MouseEvent("pointermove", { clientX: 160, clientY: 130 }),
+          { pointerId: 7 },
+        ),
+      );
+    });
+    rerender({ key: "step-2" });
+
+    expect(release).toHaveBeenCalledWith(7);
   });
 
   it("clamps drag position to viewport with 8px padding", () => {
