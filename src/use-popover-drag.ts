@@ -54,6 +54,9 @@ export function usePopoverDrag(
       const padding = 8;
 
       setIsDragging(true);
+      // Captured events still bubble to document, and keep arriving while the
+      // pointer is over an iframe. jsdom lacks setPointerCapture.
+      popoverEl.setPointerCapture?.(e.pointerId);
 
       const onMove = (ev: PointerEvent) => {
         const newX = ev.clientX - grabX;

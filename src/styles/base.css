@@ -41,6 +41,7 @@
 
 .coachmarks-popover--draggable {
   cursor: grab;
+  touch-action: none;
 }
 
 /* Selectors below stack two classes so theme stylesheets that set `transition`

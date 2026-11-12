@@ -22,6 +22,7 @@ function makePopoverEl(
 function pointerDownEvent(clientX = 150, clientY = 130): React.PointerEvent {
   return {
     button: 0,
+    pointerId: 7,
     clientX,
     clientY,
     target: document.body,
@@ -113,12 +114,15 @@ describe("usePopoverDrag", () => {
 
   it("ignores pointerdown on interactive children (button/input/select/textarea/a)", () => {
     const popoverEl = makePopoverEl();
+    const capture = vi.fn();
+    popoverEl.setPointerCapture = capture;
     const button = document.createElement("button");
     popoverEl.appendChild(button);
     const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
 
     const evt = {
       button: 0,
+      pointerId: 7,
       clientX: 150,
       clientY: 130,
       target: button,
@@ -130,6 +134,20 @@ describe("usePopoverDrag", () => {
 
     expect(result.current.isDragging).toBe(false);
     expect(evt.preventDefault).not.toHaveBeenCalled();
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it("captures the pointer on the popover when a drag starts", () => {
+    const popoverEl = makePopoverEl();
+    const capture = vi.fn();
+    popoverEl.setPointerCapture = capture;
+    const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent());
+    });
+
+    expect(capture).toHaveBeenCalledWith(7);
   });
 
   it("clamps drag position to viewport with 8px padding", () => {
