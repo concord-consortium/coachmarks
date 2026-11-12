@@ -1,4 +1,7 @@
-import { createCoachmarksEngine } from "@concord-consortium/coachmarks";
+import {
+  createCoachmarksEngine,
+  isLaidOut,
+} from "@concord-consortium/coachmarks";
 import { describe, expect, it } from "vitest";
 // Theme-stylesheet subpath imports prove the exports map resolves. If the
 // exports map is broken or a stylesheet is missing from dist/, the test file
@@ -14,5 +17,9 @@ describe("packaging smoke test", () => {
     expect(typeof engine.destroy).toBe("function");
     expect(typeof engine.dismissPopover).toBe("function");
     engine.destroy();
+  });
+
+  it("exports isLaidOut", () => {
+    expect(typeof isLaidOut).toBe("function");
   });
 });

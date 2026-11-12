@@ -272,6 +272,19 @@ On a bare `PopoverSpec` step (not a `PopoverGroup`), `dismissPopover(0)` cancels
 step (calls `onCancelRequested`) but does **not** fire `onPopoverDismissed` — bare steps
 default to `dismissBehavior: "group"`, which never fires the per-popover callback.
 
+### `isLaidOut(el)`
+
+```ts
+function isLaidOut(el: HTMLElement): boolean;
+```
+
+The check the engine uses to decide whether a step's anchor can be shown: the element is
+connected, has an offset parent (or is `position: fixed`), and has a non-zero width and
+height. A step whose element anchor fails it cancels the tour (`onCancelRequested`), a
+selector anchor is waited for until it passes, and an anchor that stops passing it while
+its step is up is treated as removed. Consumers can filter steps by the same rule before
+calling `drive()`.
+
 ### Placement vocabularies
 
 | Variant | Placement option | Values |
