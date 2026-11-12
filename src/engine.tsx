@@ -556,7 +556,8 @@ export function createCoachmarksEngine(
           document.activeElement !== focusTarget &&
           !focusTarget.hasAttribute("tabindex") &&
           !focusTarget.matches(":disabled") &&
-          isLaidOut(focusTarget)
+          isLaidOut(focusTarget) &&
+          getComputedStyle(focusTarget).visibility !== "hidden"
         ) {
           focusTarget.setAttribute("tabindex", "-1");
           focusTarget.focus({ preventScroll: true });
