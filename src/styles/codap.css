@@ -2,7 +2,7 @@
 
 /* CODAP theme: the values of CODAP's tour popover styles. */
 /* Contrast (WCAG 2.1 AA): title #006c8e on popover bg #f0f0f0, 5.21:1 (normal text). */
-/* Contrast: white on button bg #006c8e, 5.94:1 (normal text). */
+/* Contrast: white on button bg #006c8e, 5.94:1, and on its hover bg #007e98, 4.73:1 (normal text). */
 
 :root {
   --coachmarks-popover-bg: #f0f0f0;
@@ -83,7 +83,7 @@
 
 .coachmarks-popover-prev-btn:hover:not(:disabled),
 .coachmarks-popover-next-btn:hover:not(:disabled) {
-  background-color: #01879e;
+  background-color: #007e98;
 }
 
 .coachmarks-popover-prev-btn:focus-visible,
