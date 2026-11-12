@@ -549,7 +549,7 @@ export function createCoachmarksEngine(
 
     if (focusInEngine) {
       if (focusTarget?.isConnected) {
-        if (!focusTarget.hasAttribute("tabindex")) {
+        if (!focusTarget.hasAttribute("tabindex") && focusTarget.tabIndex < 0) {
           focusTarget.setAttribute("tabindex", "-1");
         }
         focusTarget.focus({ preventScroll: true });

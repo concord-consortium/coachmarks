@@ -5,6 +5,7 @@ import {
   flushReact,
   makeAnchorButton as makeAnchor,
   makeHiddenButton as makeHidden,
+  makeVisible,
 } from "./test-utils/jsdom-anchor";
 import type { EngineHandle, PopoverGroup, PopoverSpec } from "./types";
 
@@ -576,9 +577,26 @@ describe("createCoachmarksEngine", () => {
       engine.destroy();
       await Promise.resolve();
     });
-    // Focus restored to the step anchor.
     expect(document.activeElement).toBe(a);
+    expect(a.hasAttribute("tabindex")).toBe(false);
+  });
+
+  it("destroy() makes a non-focusable anchor focusable before restoring focus to it", async () => {
+    const a = document.createElement("div");
+    document.body.appendChild(a);
+    makeVisible(a, { left: 100, top: 100, width: 50, height: 30 });
+    const engine = track(createCoachmarksEngine({}));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "T" } });
+    });
+    await flushReact();
+    screen.getByTestId("coachmarks-popover").focus();
+    await act(async () => {
+      engine.destroy();
+      await Promise.resolve();
+    });
     expect(a.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(a);
   });
 
   it("destroy() leaves focus where the user moved it if focus is outside the popover", async () => {
