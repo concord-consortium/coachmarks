@@ -476,6 +476,30 @@ function PopoverContent({
     (!actionGated || isLast || targetUnclickable);
   const degradeSeq = useStore(store, (s) => s.degradeSeq);
 
+  const focusNone = (opts.initialFocus ?? "popover") === "none";
+  const nextBtnRef = useRef<HTMLButtonElement>(null);
+  // The step Previous was used on while focus was in the popover, or null.
+  const previousFrom = useRef<number | null>(null);
+  // Shared by the Previous button and ArrowLeft.
+  const movePrevious = () => {
+    previousFrom.current =
+      activeIndex > 0 && popoverEl?.contains(document.activeElement)
+        ? activeIndex
+        : null;
+    store.getSnapshot().movePrevious();
+  };
+  // Previous unmounts on the first step; under initialFocus "none" move focus to Next unless the user moved it.
+  useEffect(() => {
+    const from = previousFrom.current;
+    previousFrom.current = null;
+    if (from === null || from === activeIndex) return;
+    if (!focusNone || !popoverEl) return;
+    const active = document.activeElement;
+    if (active === null || active === document.body) {
+      (nextBtnRef.current ?? popoverEl).focus({ preventScroll: true });
+    }
+  }, [activeIndex, popoverEl, focusNone]);
+
   // Iframe focus pull-out — re-runs on every step transition (activeIndex) so a tour that
   // moves through plugin-iframe contexts keeps document-level keydown listeners live.
   const pullFocusFromIframe = opts.pullFocusFromIframe ?? true;
@@ -636,7 +660,7 @@ function PopoverContent({
     allowStepNavigation: !actionGated,
     popoverEl,
     onNext: () => store.getSnapshot().moveNext(),
-    onPrev: () => store.getSnapshot().movePrevious(),
+    onPrev: movePrevious,
     onClose: onKeyboardClose,
   });
 
@@ -768,13 +792,14 @@ function PopoverContent({
                     className="coachmarks-popover-prev-btn"
                     data-testid="coachmarks-popover-prev-btn"
                     disabled={disabled.has("previous")}
-                    onClick={() => store.getSnapshot().movePrevious()}
+                    onClick={movePrevious}
                   >
                     {opts.prevBtnText ?? "Previous"}
                   </button>
                 )}
                 {showNext && (
                   <button
+                    ref={nextBtnRef}
                     type="button"
                     className="coachmarks-popover-next-btn"
                     data-testid="coachmarks-popover-next-btn"
