@@ -94,6 +94,7 @@
 }
 
 .coachmarks-popover-close-btn {
+  color: #006c8e;
   top: 4px;
   right: 4px;
   width: 24px;
@@ -112,6 +113,10 @@
   outline: 2px solid var(--coachmarks-focus-color);
   outline-offset: -2px;
   border-radius: 2px;
+}
+
+.coachmarks-popover-close-btn:hover {
+  color: #01879e;
 }
 
 /* An SVG close icon's visible path carries a fill attribute; its bounding-box path does not. */
