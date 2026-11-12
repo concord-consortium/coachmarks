@@ -22,7 +22,7 @@ import {
 } from "react";
 import { type EngineLiveState, dismissBehaviorOf } from "./engine-state";
 import { CloseIcon } from "./icons/close";
-import { renderMarkdown } from "./markdown";
+import { markdownToPlainText, renderMarkdown } from "./markdown";
 import { renderProgressText } from "./progress-text";
 import { scrollTargetIntoView } from "./scroll-into-view";
 import { type Store, useStore } from "./store";
@@ -496,7 +496,10 @@ function PopoverContent({
     if (!focusNone || !popoverEl) return;
     const active = document.activeElement;
     if (active === null || active === document.body) {
-      (nextBtnRef.current ?? popoverEl).focus({ preventScroll: true });
+      const next = nextBtnRef.current;
+      (next && !next.disabled ? next : popoverEl).focus({
+        preventScroll: true,
+      });
     }
   }, [activeIndex, popoverEl, focusNone]);
 
@@ -517,7 +520,12 @@ function PopoverContent({
   // Silent for a step whose start pulled focus into the dialog, which then announces itself.
   const announceSteps = isPrimary && focusNone;
   const stepKey = `${seqId}:${activeIndex}`;
-  const announcement = [spec.popover?.title, spec.popover?.description]
+  const parseMarkdown = opts.parseMarkdown ?? true;
+  const announcedDescription =
+    spec.popover?.description && parseMarkdown
+      ? markdownToPlainText(spec.popover.description)
+      : spec.popover?.description;
+  const announcement = [spec.popover?.title, announcedDescription]
     .filter(Boolean)
     .join(" ");
   const [liveText, setLiveText] = useState("");

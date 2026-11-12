@@ -1046,6 +1046,19 @@ describe("Popover focus when Previous returns to the first step", () => {
     );
   });
 
+  it("moves focus to the popover when Next is disabled under initialFocus none", async () => {
+    await onSecondStep({ initialFocus: "none", disableButtons: ["next"] });
+    const prev = screen.getByTestId("coachmarks-popover-prev-btn");
+    prev.focus();
+    await act(async () => {
+      fireEvent.click(prev);
+    });
+    await flushReact();
+    expect(document.activeElement).toBe(
+      screen.getByTestId("coachmarks-popover"),
+    );
+  });
+
   it("leaves focus the user moved to the page after a Previous that did not move", async () => {
     const engine = createCoachmarksEngine({ initialFocus: "none" });
     engines.push(engine);
@@ -1227,6 +1240,21 @@ describe("Popover live region", () => {
       vi.advanceTimersByTime(100);
     });
     expect(liveRegion()?.textContent).toBe("One First");
+  });
+
+  it("announces a markdown description as the text it shows", () => {
+    vi.useFakeTimers();
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: makeAnchorEl(),
+      popover: { title: "One", description: "Click **Graph**" },
+    };
+    const { store } = makeStore(step, { initialFocus: "none" });
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(liveRegion()?.textContent).toBe("One Click Graph");
   });
 
   it("renders no live region under the default initialFocus", () => {
