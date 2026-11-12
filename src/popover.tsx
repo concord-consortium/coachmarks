@@ -494,7 +494,8 @@ function PopoverContent({
     }
     store.getSnapshot().movePrevious();
   };
-  // Previous unmounts on the first step; under initialFocus "none" move focus to Next unless the user moved it.
+  // Under initialFocus "none", a Previous that unmounts the focused button (first step, or a remount) moves
+  // focus to Next unless the user moved it.
   useEffect(() => {
     if (!isPrimary || !popoverEl) return;
     const from = previousFromByStore.get(store);

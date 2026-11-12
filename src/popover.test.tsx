@@ -1359,6 +1359,24 @@ describe("Popover live region", () => {
     expect(liveRegion()?.textContent).toBe("One Click Graph");
   });
 
+  it("announces a description as written when parseMarkdown is false", () => {
+    vi.useFakeTimers();
+    const container = makeContainer();
+    const step: PopoverSpec = {
+      element: makeAnchorEl(),
+      popover: { title: "One", description: "Click **Graph**" },
+    };
+    const { store } = makeStore(step, {
+      initialFocus: "none",
+      parseMarkdown: false,
+    });
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(liveRegion()?.textContent).toBe("One Click **Graph**");
+  });
+
   it("renders no live region under the default initialFocus", () => {
     renderStep({}, "tour");
     expect(liveRegion()).toBeNull();
