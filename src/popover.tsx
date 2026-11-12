@@ -496,7 +496,7 @@ function PopoverContent({
   };
   // Previous unmounts on the first step; under initialFocus "none" move focus to Next unless the user moved it.
   useEffect(() => {
-    if (!popoverEl) return;
+    if (!isPrimary || !popoverEl) return;
     const from = previousFromByStore.get(store) ?? null;
     previousFromByStore.delete(store);
     if (from === null || from === activeIndex) return;
@@ -508,7 +508,7 @@ function PopoverContent({
         preventScroll: true,
       });
     }
-  }, [activeIndex, popoverEl, focusNone, store]);
+  }, [activeIndex, popoverEl, focusNone, store, isPrimary]);
 
   // Iframe focus pull-out — re-runs on every step transition (activeIndex) so a tour that
   // moves through plugin-iframe contexts keeps document-level keydown listeners live.
