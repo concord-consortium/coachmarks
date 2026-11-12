@@ -1360,7 +1360,7 @@ describe("Popover live region", () => {
     document.body.appendChild(iframe);
     iframe.focus();
     expect(document.activeElement).toBe(iframe);
-    renderStep({ initialFocus: "none" }, "tour");
+    const { store, steps } = renderStep({ initialFocus: "none" }, "tour");
     expect(document.activeElement).toBe(
       screen.getByTestId("coachmarks-popover"),
     );
@@ -1368,5 +1368,17 @@ describe("Popover live region", () => {
       vi.advanceTimersByTime(100);
     });
     expect(liveRegion()?.textContent).toBe("");
+    act(() => {
+      store.setState((s) => ({
+        ...s,
+        activeIndex: 1,
+        currentStep: steps[1],
+        currentPopovers: [steps[1]],
+      }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(liveRegion()?.textContent).toBe("Two Second");
   });
 });
