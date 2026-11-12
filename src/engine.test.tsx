@@ -616,6 +616,27 @@ describe("createCoachmarksEngine", () => {
     expect(a.hasAttribute("tabindex")).toBe(false);
   });
 
+  it("destroy() leaves a target that is hidden when the tour ends without a tabindex", async () => {
+    const a = document.createElement("div");
+    document.body.appendChild(a);
+    makeVisible(a, { left: 100, top: 100, width: 50, height: 30 });
+    const engine = track(createCoachmarksEngine({}));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "T" } });
+    });
+    await flushReact();
+    screen.getByTestId("coachmarks-popover").focus();
+    Object.defineProperty(a, "offsetParent", {
+      configurable: true,
+      value: null,
+    });
+    await act(async () => {
+      engine.destroy();
+      await Promise.resolve();
+    });
+    expect(a.hasAttribute("tabindex")).toBe(false);
+  });
+
   it("destroy() makes a non-focusable anchor focusable before restoring focus to it", async () => {
     const a = document.createElement("div");
     document.body.appendChild(a);

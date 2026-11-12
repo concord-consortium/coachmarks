@@ -40,11 +40,12 @@ import { useReducedMotion } from "./use-reduced-motion";
 import { useTargetUnclickable } from "./use-target-unclickable";
 import { useTargetWatcher } from "./use-target-watcher";
 
-// Per engine, the step Previous was used on while focus was in the popover, or null. Kept
-// outside the component because a step of a different shape (anchored or viewport) remounts it.
+// Per engine, the tour (seqId) and step Previous was used on while focus was in the popover.
+// Kept outside the component because a step of a different shape (anchored or viewport)
+// remounts it.
 const previousFromByStore = new WeakMap<
   Store<EngineLiveState>,
-  number | null
+  { seqId: number; index: number }
 >();
 
 interface PopoverProps {
@@ -486,20 +487,19 @@ function PopoverContent({
   const focusNone = (opts.initialFocus ?? "popover") === "none";
   const nextBtnRef = useRef<HTMLButtonElement>(null);
   const movePrevious = () => {
-    previousFromByStore.set(
-      store,
-      activeIndex > 0 && popoverEl?.contains(document.activeElement)
-        ? activeIndex
-        : null,
-    );
+    if (activeIndex > 0 && popoverEl?.contains(document.activeElement)) {
+      previousFromByStore.set(store, { seqId, index: activeIndex });
+    } else {
+      previousFromByStore.delete(store);
+    }
     store.getSnapshot().movePrevious();
   };
   // Previous unmounts on the first step; under initialFocus "none" move focus to Next unless the user moved it.
   useEffect(() => {
     if (!isPrimary || !popoverEl) return;
-    const from = previousFromByStore.get(store) ?? null;
+    const from = previousFromByStore.get(store);
     previousFromByStore.delete(store);
-    if (from === null || from === activeIndex) return;
+    if (!from || from.seqId !== seqId || from.index === activeIndex) return;
     if (!focusNone) return;
     const active = document.activeElement;
     if (active === null || active === document.body) {
@@ -508,7 +508,7 @@ function PopoverContent({
         preventScroll: true,
       });
     }
-  }, [activeIndex, popoverEl, focusNone, store, isPrimary]);
+  }, [activeIndex, seqId, popoverEl, focusNone, store, isPrimary]);
 
   // Iframe focus pull-out — re-runs on every step transition (activeIndex) so a tour that
   // moves through plugin-iframe contexts keeps document-level keydown listeners live.

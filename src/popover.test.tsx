@@ -1225,6 +1225,45 @@ describe("Popover focus when Previous returns to the first step", () => {
     );
   });
 
+  it("does not move focus when a new tour starts after a Previous held by a pending step", async () => {
+    const engine = createCoachmarksEngine({ initialFocus: "none" });
+    engines.push(engine);
+    await act(async () => {
+      engine.drive([
+        { element: makeAnchorEl(), popover: { title: "One" } },
+        { element: makeAnchorEl(), popover: { title: "Two" } },
+        { target: "#never", popover: { title: "Three" } },
+      ]);
+    });
+    await flushReact();
+    await act(async () => {
+      engine.moveNext();
+    });
+    await flushReact();
+    await act(async () => {
+      engine.moveNext();
+    });
+    await flushReact();
+    const prev = screen.getByTestId("coachmarks-popover-prev-btn");
+    prev.focus();
+    await act(async () => {
+      fireEvent.click(prev);
+    });
+    await flushReact();
+    (document.activeElement as HTMLElement).blur();
+    await act(async () => {
+      engine.drive([
+        { element: makeAnchorEl(), popover: { title: "New one" } },
+        { element: makeAnchorEl(), popover: { title: "New two" } },
+      ]);
+    });
+    await flushReact();
+    expect(screen.getByTestId("coachmarks-popover-title").textContent).toBe(
+      "New one",
+    );
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("ends with focus on the popover under the default initialFocus", async () => {
     await onSecondStep({});
     const prev = screen.getByTestId("coachmarks-popover-prev-btn");
