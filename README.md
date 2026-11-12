@@ -211,7 +211,7 @@ Returns an `EngineHandle`. All options are optional.
 - `showButtons?: ("next" | "previous" | "close")[]` — which buttons render. Default all three.
 - `disableButtons?: ("next" | "previous")[]` — which rendered buttons appear disabled.
 - `showProgress?: boolean` — show the "X of Y" indicator (in tour kind only).
-- `allowKeyboardControl?: boolean` — Arrow/Escape keyboard navigation. Default `true`.
+- `allowKeyboardControl?: boolean` — Arrow/Escape keyboard navigation. Default `true`. Keys pressed with Alt, Ctrl, Meta or Shift are left to the browser and the focused widget (Alt+ArrowLeft stays Back).
 - `allowClose?: boolean` — allow close via button or Escape. Default `true`.
 - `animate?: boolean` — `false` disables popover animations.
 - `smoothScroll?: boolean` — smooth `scrollIntoView`. Default `true`. Forced to `auto` under `prefers-reduced-motion: reduce`.
@@ -229,7 +229,9 @@ Returns an `EngineHandle`. All options are optional.
 - `ariaLabel?: string` — popover `aria-label`, used only when no `popover.title` is set. Default `"Help"`.
 - `closeBtnAriaLabel?: string` — close-button accessible name. Default `"Close"`.
 - `pullFocusFromIframe?: boolean` — pull focus from an active iframe to the popover so keydown listeners fire. Default `true`.
-- `initialFocus?: "popover" | "first-button" | "none"` — what receives focus on step entry. Default `"popover"`.
+- `initialFocus?: "popover" | "first-button" | "none"` — what receives focus on step entry. Default `"popover"`. Under `"none"`:
+  - each step's title and description are announced through a polite live region in the popover, except a step whose start pulled focus out of an iframe, which the dialog announces itself;
+  - when Previous returns to the first step (where it is hidden) with focus on it, focus moves to Next, or to the popover when Next is not shown or is disabled.
 
 #### Lifecycle callbacks
 
@@ -280,9 +282,10 @@ function isLaidOut(el: HTMLElement): boolean;
 
 The check the engine uses to decide whether a step's anchor can be shown: the element is
 connected, has an offset parent (or is `position: fixed`), and has a non-zero width and
-height. A step whose element anchor fails it cancels the tour (`onCancelRequested`), a
-selector anchor is waited for until it passes, and an anchor that stops passing it while
-its step is up is treated as removed. Consumers can filter steps by the same rule before
+height. A step whose primary element anchor still fails it a frame later cancels the tour
+(`onCancelRequested`), a companion popover whose anchor fails it is dropped, a selector
+anchor is waited for until it passes, and an anchor that stops passing it while its step
+is up is treated as removed. Consumers can filter steps by the same rule before
 calling `drive()`.
 
 ### Placement vocabularies
