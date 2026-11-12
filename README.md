@@ -283,8 +283,8 @@ function isLaidOut(el: HTMLElement): boolean;
 The check the engine uses to decide whether a step's anchor can be shown: the element is
 connected, has an offset parent (or is `position: fixed`), and has a non-zero width and
 height. A step whose primary element anchor still fails it a frame later cancels the tour
-(`onCancelRequested`), a companion popover whose anchor fails it is dropped, a selector
-anchor is waited for until it passes, and an anchor that stops passing it while its step
+(`onCancelRequested`), a companion popover whose anchor fails it is dropped, a primary
+selector anchor is waited for until it passes, and an anchor that stops passing it while its step
 is up is treated as removed. Consumers can filter steps by the same rule before
 calling `drive()`.
 
