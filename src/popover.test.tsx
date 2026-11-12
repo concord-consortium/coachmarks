@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCoachmarksEngine } from "./engine";
 import type { EngineLiveState } from "./engine-state";
@@ -1225,6 +1225,85 @@ describe("Popover focus when Previous returns to the first step", () => {
     );
   });
 
+  it("moves focus to Next when ArrowLeft in a companion returns to a step without it", async () => {
+    const engine = createCoachmarksEngine({ initialFocus: "none" });
+    engines.push(engine);
+    await act(async () => {
+      engine.drive([
+        { element: makeAnchorEl(), popover: { title: "One" } },
+        {
+          popovers: [
+            { element: makeAnchorEl(), popover: { title: "Two" } },
+            { element: makeAnchorEl(), popover: { title: "C2" } },
+          ],
+        },
+      ]);
+    });
+    await flushReact();
+    await act(async () => {
+      engine.moveNext();
+    });
+    await flushReact();
+    const companionClose = within(
+      screen.getAllByTestId("coachmarks-popover")[1],
+    ).getByTestId("coachmarks-popover-close-btn");
+    companionClose.focus();
+    await act(async () => {
+      fireEvent.keyDown(companionClose, { key: "ArrowLeft" });
+    });
+    await flushReact();
+    expect(screen.getByTestId("coachmarks-popover-title").textContent).toBe(
+      "One",
+    );
+    expect(document.activeElement).toBe(
+      screen.getByTestId("coachmarks-popover-next-btn"),
+    );
+  });
+
+  it("does not move focus after a Previous ignored while a step waits for its target", async () => {
+    const engine = createCoachmarksEngine({ initialFocus: "none" });
+    engines.push(engine);
+    await act(async () => {
+      engine.drive([
+        { element: makeAnchorEl(), popover: { title: "One" } },
+        { popover: { title: "Two", position: "center" } },
+        { target: "#late", popover: { title: "Three" } },
+      ]);
+    });
+    await flushReact();
+    await act(async () => {
+      engine.moveNext();
+    });
+    await flushReact();
+    await act(async () => {
+      engine.moveNext();
+    });
+    await flushReact();
+    const prev = screen.getByTestId("coachmarks-popover-prev-btn");
+    prev.focus();
+    await act(async () => {
+      fireEvent.click(prev);
+    });
+    await flushReact();
+    expect(screen.getByTestId("coachmarks-popover-title").textContent).toBe(
+      "Two",
+    );
+    const late = document.createElement("button");
+    late.id = "late";
+    makeVisible(late);
+    await act(async () => {
+      document.body.appendChild(late);
+      await Promise.resolve();
+    });
+    await flushReact();
+    expect(screen.getByTestId("coachmarks-popover-title").textContent).toBe(
+      "Three",
+    );
+    expect(document.activeElement).not.toBe(
+      screen.getByTestId("coachmarks-popover-next-btn"),
+    );
+  });
+
   it("does not move focus when a new tour starts after a Previous held by a pending step", async () => {
     const engine = createCoachmarksEngine({ initialFocus: "none" });
     engines.push(engine);
@@ -1437,5 +1516,17 @@ describe("Popover live region", () => {
       vi.advanceTimersByTime(100);
     });
     expect(liveRegion()?.textContent).toBe("Two Second");
+    act(() => {
+      store.setState((s) => ({
+        ...s,
+        activeIndex: 0,
+        currentStep: steps[0],
+        currentPopovers: [steps[0]],
+      }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(liveRegion()?.textContent).not.toBe("");
   });
 });

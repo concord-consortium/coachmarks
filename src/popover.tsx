@@ -487,7 +487,12 @@ function PopoverContent({
   const focusNone = (opts.initialFocus ?? "popover") === "none";
   const nextBtnRef = useRef<HTMLButtonElement>(null);
   const movePrevious = () => {
-    if (activeIndex > 0 && popoverEl?.contains(document.activeElement)) {
+    const active = document.activeElement;
+    const inThisTour =
+      !!active?.closest(".coachmarks-popover") &&
+      !!popoverEl?.closest("[data-testid='coachmarks-root']")?.contains(active);
+    // The engine ignores Previous while it waits for a step's target.
+    if (activeIndex > 0 && inThisTour && !store.getSnapshot().waitDispose) {
       previousFromByStore.set(store, { seqId, index: activeIndex });
     } else {
       previousFromByStore.delete(store);
@@ -521,6 +526,8 @@ function PopoverContent({
     if (pullFocusFromIframe && document.activeElement?.tagName === "IFRAME") {
       popoverEl.focus({ preventScroll: true });
       focusPulledForStep.current = `${seqId}:${activeIndex}`;
+    } else {
+      focusPulledForStep.current = null;
     }
   }, [popoverEl, pullFocusFromIframe, activeIndex, seqId]);
 
