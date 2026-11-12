@@ -40,6 +40,13 @@ import { useReducedMotion } from "./use-reduced-motion";
 import { useTargetUnclickable } from "./use-target-unclickable";
 import { useTargetWatcher } from "./use-target-watcher";
 
+// Per engine, the step Previous was used on while focus was in the popover, or null. Kept
+// outside the component because a step of a different shape (anchored or viewport) remounts it.
+const previousFromByStore = new WeakMap<
+  Store<EngineLiveState>,
+  number | null
+>();
+
 interface PopoverProps {
   store: Store<EngineLiveState>;
   popoverIndex: number;
@@ -478,22 +485,22 @@ function PopoverContent({
 
   const focusNone = (opts.initialFocus ?? "popover") === "none";
   const nextBtnRef = useRef<HTMLButtonElement>(null);
-  // The step Previous was used on while focus was in the popover, or null.
-  const previousFrom = useRef<number | null>(null);
-  // Shared by the Previous button and ArrowLeft.
   const movePrevious = () => {
-    previousFrom.current =
+    previousFromByStore.set(
+      store,
       activeIndex > 0 && popoverEl?.contains(document.activeElement)
         ? activeIndex
-        : null;
+        : null,
+    );
     store.getSnapshot().movePrevious();
   };
   // Previous unmounts on the first step; under initialFocus "none" move focus to Next unless the user moved it.
   useEffect(() => {
-    const from = previousFrom.current;
-    previousFrom.current = null;
+    if (!popoverEl) return;
+    const from = previousFromByStore.get(store) ?? null;
+    previousFromByStore.delete(store);
     if (from === null || from === activeIndex) return;
-    if (!focusNone || !popoverEl) return;
+    if (!focusNone) return;
     const active = document.activeElement;
     if (active === null || active === document.body) {
       const next = nextBtnRef.current;
@@ -501,7 +508,7 @@ function PopoverContent({
         preventScroll: true,
       });
     }
-  }, [activeIndex, popoverEl, focusNone]);
+  }, [activeIndex, popoverEl, focusNone, store]);
 
   // Iframe focus pull-out — re-runs on every step transition (activeIndex) so a tour that
   // moves through plugin-iframe contexts keeps document-level keydown listeners live.

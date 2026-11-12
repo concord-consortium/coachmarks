@@ -549,10 +549,16 @@ export function createCoachmarksEngine(
 
     if (focusInEngine) {
       if (focusTarget?.isConnected) {
-        if (!focusTarget.hasAttribute("tabindex") && focusTarget.tabIndex < 0) {
-          focusTarget.setAttribute("tabindex", "-1");
-        }
         focusTarget.focus({ preventScroll: true });
+        // Only a target that could not take focus gets tabindex="-1", so a focusable one keeps
+        // its place in the Tab order.
+        if (
+          document.activeElement !== focusTarget &&
+          !focusTarget.hasAttribute("tabindex")
+        ) {
+          focusTarget.setAttribute("tabindex", "-1");
+          focusTarget.focus({ preventScroll: true });
+        }
       } else if (preAnchor?.isConnected) {
         preAnchor.focus({ preventScroll: true });
       }

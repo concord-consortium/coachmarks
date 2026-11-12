@@ -1162,6 +1162,34 @@ describe("Popover focus when Previous returns to the first step", () => {
     expect(document.activeElement).toBe(input);
   });
 
+  it("moves focus to Next when Previous returns to a centered first step", async () => {
+    const engine = createCoachmarksEngine({ initialFocus: "none" });
+    engines.push(engine);
+    await act(async () => {
+      engine.drive([
+        { popover: { title: "One", position: "center" } },
+        { element: makeAnchorEl(), popover: { title: "Two" } },
+      ]);
+    });
+    await flushReact();
+    await act(async () => {
+      engine.moveNext();
+    });
+    await flushReact();
+    const prev = screen.getByTestId("coachmarks-popover-prev-btn");
+    prev.focus();
+    await act(async () => {
+      fireEvent.click(prev);
+    });
+    await flushReact();
+    expect(screen.getByTestId("coachmarks-popover-title").textContent).toBe(
+      "One",
+    );
+    expect(document.activeElement).toBe(
+      screen.getByTestId("coachmarks-popover-next-btn"),
+    );
+  });
+
   it("ends with focus on the popover under the default initialFocus", async () => {
     await onSecondStep({});
     const prev = screen.getByTestId("coachmarks-popover-prev-btn");
