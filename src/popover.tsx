@@ -503,13 +503,33 @@ function PopoverContent({
   // Iframe focus pull-out — re-runs on every step transition (activeIndex) so a tour that
   // moves through plugin-iframe contexts keeps document-level keydown listeners live.
   const pullFocusFromIframe = opts.pullFocusFromIframe ?? true;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run on step entry.
+  // The step (`seqId:activeIndex`) whose start pulled focus into the popover, or null.
+  const focusPulledForStep = useRef<string | null>(null);
   useEffect(() => {
     if (!popoverEl) return;
     if (pullFocusFromIframe && document.activeElement?.tagName === "IFRAME") {
       popoverEl.focus({ preventScroll: true });
+      focusPulledForStep.current = `${seqId}:${activeIndex}`;
     }
   }, [popoverEl, pullFocusFromIframe, activeIndex, seqId]);
+
+  // Mounts empty and fills after a delay: screen readers ignore a live region that appears already filled.
+  // Silent for a step whose start pulled focus into the dialog, which then announces itself.
+  const announceSteps = isPrimary && focusNone;
+  const stepKey = `${seqId}:${activeIndex}`;
+  const announcement = [spec.popover?.title, spec.popover?.description]
+    .filter(Boolean)
+    .join(" ");
+  const [liveText, setLiveText] = useState("");
+  useEffect(() => {
+    if (!announceSteps) return;
+    setLiveText("");
+    const key = stepKey;
+    const timer = window.setTimeout(() => {
+      if (focusPulledForStep.current !== key) setLiveText(announcement);
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [announceSteps, announcement, stepKey]);
 
   // initialFocus — runs on every step transition and on initial popover mount.
   // Per-popover override: only the popover whose spec sets initialFocus (or the primary by default) takes focus.
@@ -815,6 +835,16 @@ function PopoverContent({
             </div>
           )}
         </div>
+        {announceSteps && (
+          <div
+            className="coachmarks-visually-hidden"
+            aria-live="polite"
+            aria-atomic="true"
+            data-testid="coachmarks-popover-live-region"
+          >
+            {liveText}
+          </div>
+        )}
         {showButtons.includes("close") && (opts.allowClose ?? true) && (
           <button
             type="button"

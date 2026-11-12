@@ -1162,3 +1162,120 @@ describe("Popover focus when Previous returns to the first step", () => {
     );
   });
 });
+
+describe("Popover live region", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function liveRegion() {
+    return screen.queryByTestId("coachmarks-popover-live-region");
+  }
+
+  function renderStep(options: EngineOptions, kind: "tour" | "highlight") {
+    const container = makeContainer();
+    const steps: PopoverSpec[] = [
+      {
+        element: makeAnchorEl(),
+        popover: { title: "One", description: "First" },
+      },
+      {
+        element: makeAnchorEl(),
+        popover: { title: "Two", description: "Second" },
+      },
+    ];
+    const { store } = makeStore(steps[0], options);
+    act(() => {
+      store.setState((s) => ({
+        ...s,
+        kind,
+        steps: kind === "tour" ? steps : [steps[0]],
+      }));
+    });
+    render(<Popover store={store} popoverIndex={0} container={container} />);
+    return { store, steps };
+  }
+
+  it("announces each step after it mounts under initialFocus none", () => {
+    vi.useFakeTimers();
+    const { store, steps } = renderStep({ initialFocus: "none" }, "tour");
+    expect(liveRegion()?.textContent).toBe("");
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(liveRegion()?.textContent).toBe("One First");
+    act(() => {
+      store.setState((s) => ({
+        ...s,
+        activeIndex: 1,
+        currentStep: steps[1],
+        currentPopovers: [steps[1]],
+      }));
+    });
+    expect(liveRegion()?.textContent).toBe("");
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(liveRegion()?.textContent).toBe("Two Second");
+  });
+
+  it("announces a highlight under initialFocus none", () => {
+    vi.useFakeTimers();
+    renderStep({ initialFocus: "none" }, "highlight");
+    expect(liveRegion()?.textContent).toBe("");
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(liveRegion()?.textContent).toBe("One First");
+  });
+
+  it("renders no live region under the default initialFocus", () => {
+    renderStep({}, "tour");
+    expect(liveRegion()).toBeNull();
+  });
+
+  it("renders no live region for a gated tour without an initialFocus option", () => {
+    renderStep({ actionGated: true }, "tour");
+    expect(liveRegion()).toBeNull();
+  });
+
+  it("renders no live region on a companion popover", () => {
+    vi.useFakeTimers();
+    const container = makeContainer();
+    const group: PopoverGroup = {
+      popovers: [
+        { element: makeAnchorEl(), popover: { title: "Main" } },
+        { element: makeAnchorEl(), popover: { title: "Companion" } },
+      ],
+    };
+    const { store } = makeStore(group, { initialFocus: "none" });
+    render(
+      <>
+        <Popover store={store} popoverIndex={0} container={container} />
+        <Popover store={store} popoverIndex={1} container={container} />
+      </>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    const regions = screen.getAllByTestId("coachmarks-popover-live-region");
+    expect(regions).toHaveLength(1);
+    expect(regions[0].textContent).toBe("Main");
+  });
+
+  it("stays silent for a step whose start pulled focus out of an iframe", () => {
+    vi.useFakeTimers();
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    iframe.focus();
+    expect(document.activeElement).toBe(iframe);
+    renderStep({ initialFocus: "none" }, "tour");
+    expect(document.activeElement).toBe(
+      screen.getByTestId("coachmarks-popover"),
+    );
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(liveRegion()?.textContent).toBe("");
+  });
+});
