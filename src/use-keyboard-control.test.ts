@@ -2,11 +2,16 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useKeyboardControl } from "./use-keyboard-control";
 
-function dispatch(key: string, target: HTMLElement = document.body) {
+function dispatch(
+  key: string,
+  target: HTMLElement = document.body,
+  init: KeyboardEventInit = {},
+) {
   const e = new KeyboardEvent("keydown", {
     key,
     bubbles: true,
     cancelable: true,
+    ...init,
   });
   target.dispatchEvent(e);
   return e;
@@ -261,6 +266,47 @@ describe("useKeyboardControl", () => {
         onClose,
       }),
     );
+    dispatch("Escape");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["altKey", "ctrlKey", "metaKey", "shiftKey"] as const)(
+    "leaves ArrowRight with %s to the browser",
+    (modifier) => {
+      renderHook(() =>
+        useKeyboardControl({
+          enabled: true,
+          allowClose: true,
+          popoverEl: null,
+          onNext,
+          onPrev,
+          onClose,
+        }),
+      );
+      const modified = dispatch("ArrowRight", document.body, {
+        [modifier]: true,
+      });
+      expect(onNext).not.toHaveBeenCalled();
+      expect(modified.defaultPrevented).toBe(false);
+      dispatch("ArrowRight");
+      expect(onNext).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("leaves Escape with altKey to the browser", () => {
+    renderHook(() =>
+      useKeyboardControl({
+        enabled: true,
+        allowClose: true,
+        popoverEl: null,
+        onNext,
+        onPrev,
+        onClose,
+      }),
+    );
+    const modified = dispatch("Escape", document.body, { altKey: true });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(modified.defaultPrevented).toBe(false);
     dispatch("Escape");
     expect(onClose).toHaveBeenCalledTimes(1);
   });
