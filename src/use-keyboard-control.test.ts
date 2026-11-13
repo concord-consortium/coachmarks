@@ -270,46 +270,37 @@ describe("useKeyboardControl", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it.each(["altKey", "ctrlKey", "metaKey", "shiftKey"] as const)(
-    "leaves ArrowRight with %s to the browser",
-    (modifier) => {
-      renderHook(() =>
-        useKeyboardControl({
-          enabled: true,
-          allowClose: true,
-          popoverEl: null,
-          onNext,
-          onPrev,
-          onClose,
-        }),
+  const handlers = {
+    ArrowRight: () => onNext,
+    ArrowLeft: () => onPrev,
+    Escape: () => onClose,
+  };
+  describe.each(Object.keys(handlers) as (keyof typeof handlers)[])(
+    "%s with a modifier",
+    (key) => {
+      it.each(["altKey", "ctrlKey", "metaKey", "shiftKey"] as const)(
+        "is left to the browser with %s",
+        (modifier) => {
+          renderHook(() =>
+            useKeyboardControl({
+              enabled: true,
+              allowClose: true,
+              popoverEl: null,
+              onNext,
+              onPrev,
+              onClose,
+            }),
+          );
+          const handler = handlers[key]();
+          const modified = dispatch(key, document.body, { [modifier]: true });
+          expect(handler).not.toHaveBeenCalled();
+          expect(modified.defaultPrevented).toBe(false);
+          dispatch(key);
+          expect(handler).toHaveBeenCalledTimes(1);
+        },
       );
-      const modified = dispatch("ArrowRight", document.body, {
-        [modifier]: true,
-      });
-      expect(onNext).not.toHaveBeenCalled();
-      expect(modified.defaultPrevented).toBe(false);
-      dispatch("ArrowRight");
-      expect(onNext).toHaveBeenCalledTimes(1);
     },
   );
-
-  it("leaves Escape with altKey to the browser", () => {
-    renderHook(() =>
-      useKeyboardControl({
-        enabled: true,
-        allowClose: true,
-        popoverEl: null,
-        onNext,
-        onPrev,
-        onClose,
-      }),
-    );
-    const modified = dispatch("Escape", document.body, { altKey: true });
-    expect(onClose).not.toHaveBeenCalled();
-    expect(modified.defaultPrevented).toBe(false);
-    dispatch("Escape");
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
 
   it("removes the listener on unmount", () => {
     const { unmount } = renderHook(() =>
