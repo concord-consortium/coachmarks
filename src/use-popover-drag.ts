@@ -58,14 +58,21 @@ export function usePopoverDrag(
       // pointer is over an iframe. Capturing once the pointer moves, rather than
       // on pointerdown, leaves a click's target where it was pressed; pointerleave
       // covers a first move that lands in an iframe. jsdom lacks setPointerCapture.
-      let capturedId: number | null = null;
+      // Only the pointer that started the drag moves or ends it, so a second finger is ignored.
+      const pointerId = e.pointerId;
+      let captured = false;
       const capture = (ev: PointerEvent) => {
-        if (capturedId !== null) return;
-        capturedId = ev.pointerId;
-        popoverEl.setPointerCapture?.(capturedId);
+        if (captured || ev.pointerId !== pointerId) return;
+        captured = true;
+        try {
+          popoverEl.setPointerCapture?.(pointerId);
+        } catch {
+          // Throws for a pointer that is no longer active; the drag goes on uncaptured.
+        }
       };
 
       const onMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
         capture(ev);
         const newX = ev.clientX - grabX;
         const newY = ev.clientY - grabY;
@@ -77,8 +84,8 @@ export function usePopoverDrag(
         });
       };
       const detach = () => {
-        if (capturedId !== null && popoverEl.hasPointerCapture?.(capturedId)) {
-          popoverEl.releasePointerCapture(capturedId);
+        if (captured && popoverEl.hasPointerCapture?.(pointerId)) {
+          popoverEl.releasePointerCapture(pointerId);
         }
         popoverEl.removeEventListener("pointerleave", capture);
         document.removeEventListener("pointermove", onMove);
@@ -86,7 +93,8 @@ export function usePopoverDrag(
         document.removeEventListener("pointercancel", onUp);
         cleanupRef.current = null;
       };
-      const onUp = () => {
+      const onUp = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
         setIsDragging(false);
         detach();
       };
