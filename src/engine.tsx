@@ -553,7 +553,7 @@ export function createCoachmarksEngine(
         // Only a target that is not focusable as it is gets tabindex="-1", so a focusable one
         // keeps its place in the Tab order. A disabled or hidden control is not made focusable.
         if (
-          document.activeElement !== focusTarget &&
+          !focusTarget.matches(":focus") &&
           !focusTarget.hasAttribute("tabindex") &&
           !focusTarget.matches(":disabled") &&
           isLaidOut(focusTarget) &&
