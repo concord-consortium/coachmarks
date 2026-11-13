@@ -5,6 +5,7 @@ import {
   flushReact,
   makeAnchorButton as makeAnchor,
   makeHiddenButton as makeHidden,
+  makeVisible,
 } from "./test-utils/jsdom-anchor";
 import type { EngineHandle, PopoverGroup, PopoverSpec } from "./types";
 
@@ -576,9 +577,142 @@ describe("createCoachmarksEngine", () => {
       engine.destroy();
       await Promise.resolve();
     });
-    // Focus restored to the step anchor.
+    expect(document.activeElement).toBe(a);
+    expect(a.hasAttribute("tabindex")).toBe(false);
+  });
+
+  it("destroy() restores focus to an anchor without href, which cannot take focus on its own", async () => {
+    const a = document.createElement("a");
+    a.textContent = "link";
+    document.body.appendChild(a);
+    makeVisible(a, { left: 100, top: 100, width: 50, height: 30 });
+    const engine = track(createCoachmarksEngine({}));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "T" } });
+    });
+    await flushReact();
+    screen.getByTestId("coachmarks-popover").focus();
+    await act(async () => {
+      engine.destroy();
+      await Promise.resolve();
+    });
     expect(document.activeElement).toBe(a);
     expect(a.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("destroy() adds no tabindex to a disabled button anchor", async () => {
+    const a = makeAnchor();
+    const engine = track(createCoachmarksEngine({}));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "T" } });
+    });
+    await flushReact();
+    screen.getByTestId("coachmarks-popover").focus();
+    a.disabled = true;
+    await act(async () => {
+      engine.destroy();
+      await Promise.resolve();
+    });
+    expect(a.hasAttribute("tabindex")).toBe(false);
+  });
+
+  it("destroy() leaves a target that is not laid out when the tour ends without a tabindex", async () => {
+    const a = document.createElement("div");
+    document.body.appendChild(a);
+    makeVisible(a, { left: 100, top: 100, width: 50, height: 30 });
+    const engine = track(createCoachmarksEngine({}));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "T" } });
+    });
+    await flushReact();
+    screen.getByTestId("coachmarks-popover").focus();
+    Object.defineProperty(a, "offsetParent", {
+      configurable: true,
+      value: null,
+    });
+    await act(async () => {
+      engine.destroy();
+      await Promise.resolve();
+    });
+    expect(a.hasAttribute("tabindex")).toBe(false);
+  });
+
+  it("destroy() leaves a target that is visibility-hidden when the tour ends without a tabindex", async () => {
+    const a = document.createElement("div");
+    document.body.appendChild(a);
+    makeVisible(a, { left: 100, top: 100, width: 50, height: 30 });
+    const engine = track(createCoachmarksEngine({}));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "T" } });
+    });
+    await flushReact();
+    screen.getByTestId("coachmarks-popover").focus();
+    a.style.visibility = "hidden";
+    await act(async () => {
+      engine.destroy();
+      await Promise.resolve();
+    });
+    expect(a.hasAttribute("tabindex")).toBe(false);
+  });
+
+  it("destroy() adds no tabindex to a focused anchor inside a shadow root", async () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const a = document.createElement("button");
+    host.attachShadow({ mode: "open" }).appendChild(a);
+    makeVisible(a, { left: 100, top: 100, width: 50, height: 30 });
+    const engine = track(createCoachmarksEngine({}));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "T" } });
+    });
+    await flushReact();
+    screen.getByTestId("coachmarks-popover").focus();
+    await act(async () => {
+      engine.destroy();
+      await Promise.resolve();
+    });
+    expect(host.shadowRoot?.activeElement).toBe(a);
+    expect(a.hasAttribute("tabindex")).toBe(false);
+  });
+
+  it("destroy() keeps the tabindex of an anchor that passes focus to a child", async () => {
+    const a = document.createElement("div");
+    a.tabIndex = 0;
+    const input = document.createElement("input");
+    a.appendChild(input);
+    a.addEventListener("focus", () => input.focus());
+    document.body.appendChild(a);
+    makeVisible(a, { left: 100, top: 100, width: 50, height: 30 });
+    const engine = track(createCoachmarksEngine({}));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "T" } });
+    });
+    await flushReact();
+    screen.getByTestId("coachmarks-popover").focus();
+    await act(async () => {
+      engine.destroy();
+      await Promise.resolve();
+    });
+    expect(document.activeElement).toBe(input);
+    expect(a.getAttribute("tabindex")).toBe("0");
+  });
+
+  it("destroy() makes a non-focusable anchor focusable before restoring focus to it", async () => {
+    const a = document.createElement("div");
+    document.body.appendChild(a);
+    makeVisible(a, { left: 100, top: 100, width: 50, height: 30 });
+    const engine = track(createCoachmarksEngine({}));
+    await act(async () => {
+      engine.highlight({ element: a, popover: { title: "T" } });
+    });
+    await flushReact();
+    screen.getByTestId("coachmarks-popover").focus();
+    await act(async () => {
+      engine.destroy();
+      await Promise.resolve();
+    });
+    expect(a.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(a);
   });
 
   it("destroy() leaves focus where the user moved it if focus is outside the popover", async () => {

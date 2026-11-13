@@ -2,11 +2,16 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useKeyboardControl } from "./use-keyboard-control";
 
-function dispatch(key: string, target: HTMLElement = document.body) {
+function dispatch(
+  key: string,
+  target: HTMLElement = document.body,
+  init: KeyboardEventInit = {},
+) {
   const e = new KeyboardEvent("keydown", {
     key,
     bubbles: true,
     cancelable: true,
+    ...init,
   });
   target.dispatchEvent(e);
   return e;
@@ -264,6 +269,38 @@ describe("useKeyboardControl", () => {
     dispatch("Escape");
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  const handlers = {
+    ArrowRight: () => onNext,
+    ArrowLeft: () => onPrev,
+    Escape: () => onClose,
+  };
+  describe.each(Object.keys(handlers) as (keyof typeof handlers)[])(
+    "%s with a modifier",
+    (key) => {
+      it.each(["altKey", "ctrlKey", "metaKey", "shiftKey"] as const)(
+        "is left to the browser with %s",
+        (modifier) => {
+          renderHook(() =>
+            useKeyboardControl({
+              enabled: true,
+              allowClose: true,
+              popoverEl: null,
+              onNext,
+              onPrev,
+              onClose,
+            }),
+          );
+          const handler = handlers[key]();
+          const modified = dispatch(key, document.body, { [modifier]: true });
+          expect(handler).not.toHaveBeenCalled();
+          expect(modified.defaultPrevented).toBe(false);
+          dispatch(key);
+          expect(handler).toHaveBeenCalledTimes(1);
+        },
+      );
+    },
+  );
 
   it("removes the listener on unmount", () => {
     const { unmount } = renderHook(() =>

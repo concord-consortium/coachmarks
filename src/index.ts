@@ -1,6 +1,7 @@
 import "./styles/base.css";
 
 export { createCoachmarksEngine } from "./engine";
+export { isLaidOut } from "./is-laid-out";
 export type {
   AdvanceTrigger,
   AnchoredPopover,

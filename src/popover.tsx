@@ -22,7 +22,7 @@ import {
 } from "react";
 import { type EngineLiveState, dismissBehaviorOf } from "./engine-state";
 import { CloseIcon } from "./icons/close";
-import { renderMarkdown } from "./markdown";
+import { markdownToPlainText, renderMarkdown } from "./markdown";
 import { renderProgressText } from "./progress-text";
 import { scrollTargetIntoView } from "./scroll-into-view";
 import { type Store, useStore } from "./store";
@@ -39,6 +39,17 @@ import { usePopoverDrag } from "./use-popover-drag";
 import { useReducedMotion } from "./use-reduced-motion";
 import { useTargetUnclickable } from "./use-target-unclickable";
 import { useTargetWatcher } from "./use-target-watcher";
+
+// Per engine: the tour (seqId) and step that Previous, pressed with focus in the popover, goes to.
+// Kept outside the component because a step of a different shape (anchored or viewport)
+// remounts it.
+const previousToByStore = new WeakMap<
+  Store<EngineLiveState>,
+  { seqId: number; index: number }
+>();
+
+// The live region empties this long after it fills, so browsing the dialog doesn't find its text twice.
+const ANNOUNCEMENT_LIFETIME_MS = 5000;
 
 interface PopoverProps {
   store: Store<EngineLiveState>;
@@ -476,16 +487,88 @@ function PopoverContent({
     (!actionGated || isLast || targetUnclickable);
   const degradeSeq = useStore(store, (s) => s.degradeSeq);
 
+  const focusNone = (opts.initialFocus ?? "popover") === "none";
+  const nextBtnRef = useRef<HTMLButtonElement>(null);
+  const movePrevious = () => {
+    const active = document.activeElement;
+    const inThisTour =
+      !!active?.closest(".coachmarks-popover") && container.contains(active);
+    // The engine ignores Previous while a step waits for its target.
+    if (activeIndex > 0 && inThisTour && !store.getSnapshot().waitDispose) {
+      previousToByStore.set(store, { seqId, index: activeIndex - 1 });
+    } else {
+      previousToByStore.delete(store);
+    }
+    store.getSnapshot().movePrevious();
+  };
+  // Under initialFocus "none", a Previous that unmounts the focused button (first step, or a remount) moves
+  // focus to Next unless the user moved it.
+  useEffect(() => {
+    if (!isPrimary || !popoverEl) return;
+    const to = previousToByStore.get(store);
+    previousToByStore.delete(store);
+    if (!to || to.seqId !== seqId || to.index !== activeIndex) return;
+    if (!focusNone) return;
+    const active = document.activeElement;
+    if (active === null || active === document.body) {
+      const next = nextBtnRef.current;
+      (next && !next.disabled ? next : popoverEl).focus({
+        preventScroll: true,
+      });
+    }
+  }, [activeIndex, seqId, popoverEl, focusNone, store, isPrimary]);
+
   // Iframe focus pull-out — re-runs on every step transition (activeIndex) so a tour that
   // moves through plugin-iframe contexts keeps document-level keydown listeners live.
   const pullFocusFromIframe = opts.pullFocusFromIframe ?? true;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run on step entry.
+  // The step (`seqId:activeIndex`) whose start pulled focus into the dialog, or null.
+  const focusPulledForStep = useRef<string | null>(null);
   useEffect(() => {
     if (!popoverEl) return;
     if (pullFocusFromIframe && document.activeElement?.tagName === "IFRAME") {
       popoverEl.focus({ preventScroll: true });
+      focusPulledForStep.current = `${seqId}:${activeIndex}`;
+    } else {
+      focusPulledForStep.current = null;
     }
   }, [popoverEl, pullFocusFromIframe, activeIndex, seqId]);
+
+  // Mounts empty and fills after a delay: screen readers ignore a live region that appears already filled.
+  // Silent for a step whose start pulled focus into the dialog, which then announces itself.
+  const announceSteps = isPrimary && focusNone;
+  const stepKey = `${seqId}:${activeIndex}`;
+  const parseMarkdown = opts.parseMarkdown ?? true;
+  const announcedDescription =
+    spec.popover?.description && parseMarkdown
+      ? markdownToPlainText(spec.popover.description)
+      : spec.popover?.description;
+  const title = spec.popover?.title;
+  // A period after an unpunctuated title makes a screen reader pause before the description.
+  const announcedTitle =
+    title && announcedDescription && !/[.!?:;]\s*$/.test(title)
+      ? `${title}.`
+      : title;
+  const announcement = [announcedTitle, announcedDescription]
+    .filter(Boolean)
+    .join(" ");
+  const [liveText, setLiveText] = useState("");
+  useEffect(() => {
+    if (!announceSteps) return;
+    setLiveText("");
+    const key = stepKey;
+    let clearTimer: number | undefined;
+    const timer = window.setTimeout(() => {
+      if (focusPulledForStep.current !== key) setLiveText(announcement);
+      clearTimer = window.setTimeout(
+        () => setLiveText(""),
+        ANNOUNCEMENT_LIFETIME_MS,
+      );
+    }, 100);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [announceSteps, announcement, stepKey]);
 
   // initialFocus — runs on every step transition and on initial popover mount.
   // Per-popover override: only the popover whose spec sets initialFocus (or the primary by default) takes focus.
@@ -636,7 +719,7 @@ function PopoverContent({
     allowStepNavigation: !actionGated,
     popoverEl,
     onNext: () => store.getSnapshot().moveNext(),
-    onPrev: () => store.getSnapshot().movePrevious(),
+    onPrev: movePrevious,
     onClose: onKeyboardClose,
   });
 
@@ -768,13 +851,14 @@ function PopoverContent({
                     className="coachmarks-popover-prev-btn"
                     data-testid="coachmarks-popover-prev-btn"
                     disabled={disabled.has("previous")}
-                    onClick={() => store.getSnapshot().movePrevious()}
+                    onClick={movePrevious}
                   >
                     {opts.prevBtnText ?? "Previous"}
                   </button>
                 )}
                 {showNext && (
                   <button
+                    ref={nextBtnRef}
                     type="button"
                     className="coachmarks-popover-next-btn"
                     data-testid="coachmarks-popover-next-btn"
@@ -790,6 +874,16 @@ function PopoverContent({
             </div>
           )}
         </div>
+        {announceSteps && (
+          <div
+            className="coachmarks-visually-hidden"
+            aria-live="polite"
+            aria-atomic="true"
+            data-testid="coachmarks-popover-live-region"
+          >
+            {liveText}
+          </div>
+        )}
         {showButtons.includes("close") && (opts.allowClose ?? true) && (
           <button
             type="button"

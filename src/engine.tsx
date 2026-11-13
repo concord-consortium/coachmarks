@@ -549,10 +549,19 @@ export function createCoachmarksEngine(
 
     if (focusInEngine) {
       if (focusTarget?.isConnected) {
-        if (!focusTarget.hasAttribute("tabindex")) {
-          focusTarget.setAttribute("tabindex", "-1");
-        }
         focusTarget.focus({ preventScroll: true });
+        // Only a target that is not focusable as it is gets tabindex="-1", so a focusable one
+        // keeps its place in the Tab order. A disabled or hidden control is not made focusable.
+        if (
+          !focusTarget.matches(":focus") &&
+          !focusTarget.hasAttribute("tabindex") &&
+          !focusTarget.matches(":disabled") &&
+          isLaidOut(focusTarget) &&
+          getComputedStyle(focusTarget).visibility !== "hidden"
+        ) {
+          focusTarget.setAttribute("tabindex", "-1");
+          focusTarget.focus({ preventScroll: true });
+        }
       } else if (preAnchor?.isConnected) {
         preAnchor.focus({ preventScroll: true });
       }

@@ -33,3 +33,8 @@ export function renderMarkdown(text: string): ReactNode {
   if (nodes.length === 1 && typeof nodes[0] === "string") return nodes[0];
   return nodes;
 }
+
+/** The text `renderMarkdown` shows, without its bold delimiters. */
+export function markdownToPlainText(text: string): string {
+  return text.replace(BOLD, "$2");
+}

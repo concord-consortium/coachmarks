@@ -22,11 +22,35 @@ function makePopoverEl(
 function pointerDownEvent(clientX = 150, clientY = 130): React.PointerEvent {
   return {
     button: 0,
+    pointerId: 7,
     clientX,
     clientY,
     target: document.body,
     preventDefault: vi.fn(),
   } as unknown as React.PointerEvent;
+}
+
+function pointer(
+  type: string,
+  init: MouseEventInit = {},
+  pointerId = 7,
+): PointerEvent {
+  return Object.assign(new MouseEvent(type, init), {
+    pointerId,
+  }) as unknown as PointerEvent;
+}
+
+function heldCapture(popoverEl: HTMLElement) {
+  let held = false;
+  popoverEl.setPointerCapture = vi.fn(() => {
+    held = true;
+  });
+  popoverEl.hasPointerCapture = vi.fn(() => held);
+  const release = vi.fn(() => {
+    held = false;
+  });
+  popoverEl.releasePointerCapture = release;
+  return release;
 }
 
 describe("usePopoverDrag", () => {
@@ -61,7 +85,7 @@ describe("usePopoverDrag", () => {
     });
     expect(result.current.isDragging).toBe(true);
 
-    const move = new MouseEvent("pointermove", { clientX: 200, clientY: 180 });
+    const move = pointer("pointermove", { clientX: 200, clientY: 180 });
     act(() => {
       document.dispatchEvent(move);
     });
@@ -76,14 +100,14 @@ describe("usePopoverDrag", () => {
       result.current.onPointerDown(pointerDownEvent());
     });
     act(() => {
-      document.dispatchEvent(new MouseEvent("pointerup"));
+      document.dispatchEvent(pointer("pointerup"));
     });
     expect(result.current.isDragging).toBe(false);
 
     const before = result.current.position;
     act(() => {
       document.dispatchEvent(
-        new MouseEvent("pointermove", { clientX: 999, clientY: 999 }),
+        pointer("pointermove", { clientX: 999, clientY: 999 }),
       );
     });
     expect(result.current.position).toBe(before);
@@ -113,12 +137,15 @@ describe("usePopoverDrag", () => {
 
   it("ignores pointerdown on interactive children (button/input/select/textarea/a)", () => {
     const popoverEl = makePopoverEl();
+    const capture = vi.fn();
+    popoverEl.setPointerCapture = capture;
     const button = document.createElement("button");
     popoverEl.appendChild(button);
     const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
 
     const evt = {
       button: 0,
+      pointerId: 7,
       clientX: 150,
       clientY: 130,
       target: button,
@@ -130,6 +157,172 @@ describe("usePopoverDrag", () => {
 
     expect(result.current.isDragging).toBe(false);
     expect(evt.preventDefault).not.toHaveBeenCalled();
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it("captures the pointer on the popover once, at the first move of a drag", () => {
+    const popoverEl = makePopoverEl();
+    const capture = vi.fn();
+    popoverEl.setPointerCapture = capture;
+    const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent());
+    });
+    expect(capture).not.toHaveBeenCalled();
+
+    const move = (clientX: number) =>
+      pointer("pointermove", { clientX, clientY: 130 });
+    act(() => {
+      document.dispatchEvent(move(160));
+      document.dispatchEvent(move(170));
+    });
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(capture).toHaveBeenCalledWith(7);
+  });
+
+  it("captures the pointer when it leaves the popover before any move reaches the page", () => {
+    const popoverEl = makePopoverEl();
+    const capture = vi.fn();
+    popoverEl.setPointerCapture = capture;
+    const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent());
+    });
+    popoverEl.dispatchEvent(pointer("pointerleave"));
+
+    expect(capture).toHaveBeenCalledWith(7);
+  });
+
+  it("releases the pointer capture when a step change ends the drag", () => {
+    const popoverEl = makePopoverEl();
+    const release = heldCapture(popoverEl);
+    const { result, rerender } = renderHook(
+      ({ key }) => usePopoverDrag(key, popoverEl),
+      { initialProps: { key: "step-1" } },
+    );
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent());
+    });
+    act(() => {
+      document.dispatchEvent(
+        pointer("pointermove", { clientX: 160, clientY: 130 }),
+      );
+    });
+    rerender({ key: "step-2" });
+
+    expect(release).toHaveBeenCalledWith(7);
+  });
+
+  for (const end of ["pointerup", "pointercancel"]) {
+    it(`releases the pointer capture on ${end}`, () => {
+      const popoverEl = makePopoverEl();
+      const release = heldCapture(popoverEl);
+      const { result } = renderHook(() =>
+        usePopoverDrag("step-key", popoverEl),
+      );
+
+      act(() => {
+        result.current.onPointerDown(pointerDownEvent());
+      });
+      act(() => {
+        document.dispatchEvent(
+          pointer("pointermove", { clientX: 160, clientY: 130 }),
+        );
+      });
+      act(() => {
+        document.dispatchEvent(pointer(end));
+      });
+
+      expect(release).toHaveBeenCalledWith(7);
+      expect(result.current.isDragging).toBe(false);
+    });
+  }
+
+  it("captures once when the pointer leaves the popover and then moves", () => {
+    const popoverEl = makePopoverEl();
+    const capture = vi.fn();
+    popoverEl.setPointerCapture = capture;
+    const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent());
+    });
+    popoverEl.dispatchEvent(pointer("pointerleave"));
+    act(() => {
+      document.dispatchEvent(
+        pointer("pointermove", { clientX: 160, clientY: 130 }),
+      );
+    });
+
+    expect(capture).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops listening for pointerleave once the drag ends", () => {
+    const popoverEl = makePopoverEl();
+    const capture = vi.fn();
+    popoverEl.setPointerCapture = capture;
+    const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent());
+    });
+    act(() => {
+      document.dispatchEvent(pointer("pointerup"));
+    });
+    popoverEl.dispatchEvent(pointer("pointerleave"));
+
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it("ignores a second pointer during a drag", () => {
+    const popoverEl = makePopoverEl();
+    const capture = vi.fn();
+    popoverEl.setPointerCapture = capture;
+    const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent(150, 130));
+    });
+    popoverEl.dispatchEvent(pointer("pointerleave", {}, 8));
+    act(() => {
+      document.dispatchEvent(
+        pointer("pointermove", { clientX: 400, clientY: 400 }, 8),
+      );
+      document.dispatchEvent(pointer("pointerup", {}, 8));
+    });
+    expect(capture).not.toHaveBeenCalled();
+    expect(result.current.position).toBeNull();
+    expect(result.current.isDragging).toBe(true);
+
+    act(() => {
+      document.dispatchEvent(
+        pointer("pointermove", { clientX: 200, clientY: 180 }),
+      );
+    });
+    expect(capture).toHaveBeenCalledWith(7);
+    expect(result.current.position).toEqual({ x: 150, y: 150 });
+  });
+
+  it("keeps dragging when the pointer cannot be captured", () => {
+    const popoverEl = makePopoverEl();
+    popoverEl.setPointerCapture = vi.fn(() => {
+      throw new DOMException("No active pointer", "NotFoundError");
+    });
+    const { result } = renderHook(() => usePopoverDrag("step-key", popoverEl));
+
+    act(() => {
+      result.current.onPointerDown(pointerDownEvent(150, 130));
+    });
+    act(() => {
+      document.dispatchEvent(
+        pointer("pointermove", { clientX: 200, clientY: 180 }),
+      );
+    });
+
+    expect(result.current.position).toEqual({ x: 150, y: 150 });
   });
 
   it("clamps drag position to viewport with 8px padding", () => {
@@ -146,14 +339,14 @@ describe("usePopoverDrag", () => {
     });
     act(() => {
       document.dispatchEvent(
-        new MouseEvent("pointermove", { clientX: 99999, clientY: 99999 }),
+        pointer("pointermove", { clientX: 99999, clientY: 99999 }),
       );
     });
     expect(result.current.position).toEqual({ x: 816, y: 660 });
 
     act(() => {
       document.dispatchEvent(
-        new MouseEvent("pointermove", { clientX: -99999, clientY: -99999 }),
+        pointer("pointermove", { clientX: -99999, clientY: -99999 }),
       );
     });
     expect(result.current.position).toEqual({ x: 8, y: 8 });
@@ -172,7 +365,7 @@ describe("usePopoverDrag", () => {
 
     act(() => {
       document.dispatchEvent(
-        new MouseEvent("pointermove", { clientX: 310, clientY: 210 }),
+        pointer("pointermove", { clientX: 310, clientY: 210 }),
       );
     });
     expect(result.current.position).toEqual({ x: 110, y: 110 });
@@ -201,7 +394,7 @@ describe("usePopoverDrag", () => {
     // Subsequent pointermove must not mutate position — the listener is gone.
     act(() => {
       document.dispatchEvent(
-        new MouseEvent("pointermove", { clientX: 999, clientY: 999 }),
+        pointer("pointermove", { clientX: 999, clientY: 999 }),
       );
     });
     expect(result.current.position).toBeNull();
@@ -221,11 +414,11 @@ describe("usePopoverDrag", () => {
     });
     act(() => {
       document.dispatchEvent(
-        new MouseEvent("pointermove", { clientX: 200, clientY: 180 }),
+        pointer("pointermove", { clientX: 200, clientY: 180 }),
       );
     });
     act(() => {
-      document.dispatchEvent(new MouseEvent("pointerup"));
+      document.dispatchEvent(pointer("pointerup"));
     });
     expect(result.current.position).not.toBeNull();
 

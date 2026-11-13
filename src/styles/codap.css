@@ -1,25 +1,32 @@
 @charset "UTF-8";
 
-/* CODAP theme. Faithful port of CODAP's tour-styles.scss. */
-/* Verified contrast (WCAG 2.1 AA): popover bg #f0f0f0 vs. title #006c8e — 4.91:1 (pass normal). */
-/* Verified contrast: button bg #006c8e vs. white text — 5.13:1 (pass normal). */
-/* Verified contrast: outline ring #006c8e vs. typical CODAP light gray — ≥3:1 (pass UI). */
+/* CODAP theme: the values of CODAP's tour popover styles. */
+/* Contrast (WCAG 2.1 AA): title #006c8e on popover bg #f0f0f0, 5.21:1 (normal text). */
+/* Contrast: white on button bg #006c8e, 5.94:1, and on its hover bg #007e98, 4.73:1 (normal text). */
 
 :root {
   --coachmarks-popover-bg: #f0f0f0;
-  --coachmarks-popover-border: #cdcdcd;
-  --coachmarks-ring-color: #006c8e;
-  --coachmarks-focus-color: #006c8e;
+  --coachmarks-popover-border: #0081a9;
+  --coachmarks-ring-color: #01879e;
+  --coachmarks-ring-width: 2px;
+  --coachmarks-focus-color: #0957d0;
 }
 
 .coachmarks-popover {
   font-family: Montserrat, sans-serif;
   background-color: var(--coachmarks-popover-bg);
-  color: #333;
+  color: #222;
   border: 1px solid var(--coachmarks-popover-border);
   border-radius: 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  /* 320px of content, plus the content padding and the border (the popover is border-box). */
+  max-width: 370px;
   transition: transform 200ms ease-out, opacity 150ms ease-out;
+}
+
+/* The 32px right padding clears the close button; title and description reset base's own. */
+.coachmarks-popover-content {
+  padding: 16px 32px 16px 16px;
 }
 
 .coachmarks-popover-title {
@@ -27,17 +34,36 @@
   font-size: 14px;
   font-weight: 700;
   color: #006c8e;
+  margin: 0 0 8px 0;
+  padding-right: 0;
 }
 
 .coachmarks-popover-description {
   font-size: 13px;
   font-weight: 400;
-  color: #333;
+  line-height: 1.5;
+  color: #222;
+}
+
+.coachmarks-popover-description:first-child {
+  padding-right: 0;
+}
+
+/* Progress text on its own line, then the buttons, left-aligned. */
+.coachmarks-popover-buttons {
+  display: block;
+  margin-top: 0;
 }
 
 .coachmarks-popover-progress-text {
   font-size: 12px;
-  color: #666;
+  color: #545454;
+  margin-top: 8px;
+}
+
+.coachmarks-popover-button-group {
+  margin-left: 0;
+  gap: 0;
 }
 
 .coachmarks-popover-prev-btn,
@@ -48,30 +74,52 @@
   background-color: #006c8e;
   color: white;
   text-shadow: none;
+  border: none;
   border-radius: 4px;
+  padding: 5px 12px;
+  margin-top: 8px;
+  margin-right: 4px;
 }
 
 .coachmarks-popover-prev-btn:hover:not(:disabled),
 .coachmarks-popover-next-btn:hover:not(:disabled) {
-  background-color: #005a76;
+  background-color: #007e98;
+}
+
+.coachmarks-popover-prev-btn:focus-visible,
+.coachmarks-popover-next-btn:focus-visible {
+  outline: 2px solid var(--coachmarks-focus-color);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .coachmarks-popover-close-btn {
-  all: unset;
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 32px;
-  height: 28px;
+  color: #006c8e;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 18px;
-  font-weight: 500;
-  color: #d2d2d2;
-  z-index: 1;
-  text-align: center;
-  transition: color 0.2s;
+}
+
+.coachmarks-popover-close-btn:focus-visible {
+  outline: 2px solid var(--coachmarks-focus-color);
+  outline-offset: -2px;
+  border-radius: 2px;
 }
 
 .coachmarks-popover-close-btn:hover {
-  color: #005a76;
+  color: #01879e;
+}
+
+/* An SVG close icon's visible path carries a fill attribute; its bounding-box path does not. */
+.coachmarks-popover-close-btn:hover .coachmarks-popover-close-icon path[fill] {
+  fill: #01879e;
 }

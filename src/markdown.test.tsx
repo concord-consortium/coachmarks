@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { renderMarkdown } from "./markdown";
+import { markdownToPlainText, renderMarkdown } from "./markdown";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -53,5 +53,13 @@ describe("renderMarkdown", () => {
     const el = renderInto(renderMarkdown("****"));
     expect(el.querySelector("strong")).toBeNull();
     expect(el.textContent).toBe("****");
+  });
+});
+
+describe("markdownToPlainText", () => {
+  it("drops bold delimiters and keeps everything else", () => {
+    expect(markdownToPlainText("Click **Graph** or __Table__ * 2")).toBe(
+      "Click Graph or Table * 2",
+    );
   });
 });
