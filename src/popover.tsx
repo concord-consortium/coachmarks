@@ -40,13 +40,16 @@ import { useReducedMotion } from "./use-reduced-motion";
 import { useTargetUnclickable } from "./use-target-unclickable";
 import { useTargetWatcher } from "./use-target-watcher";
 
-// Per engine, the tour (seqId) and step Previous was used on while focus was in the popover.
+// Per engine: the tour (seqId) and step that Previous, pressed with focus in the popover, goes to.
 // Kept outside the component because a step of a different shape (anchored or viewport)
 // remounts it.
-const previousFromByStore = new WeakMap<
+const previousToByStore = new WeakMap<
   Store<EngineLiveState>,
   { seqId: number; index: number }
 >();
+
+// The live region empties this long after it fills, so browsing the dialog doesn't find its text twice.
+const ANNOUNCEMENT_LIFETIME_MS = 5000;
 
 interface PopoverProps {
   store: Store<EngineLiveState>;
@@ -489,13 +492,12 @@ function PopoverContent({
   const movePrevious = () => {
     const active = document.activeElement;
     const inThisTour =
-      !!active?.closest(".coachmarks-popover") &&
-      !!popoverEl?.closest("[data-testid='coachmarks-root']")?.contains(active);
-    // The engine ignores Previous while it waits for a step's target.
+      !!active?.closest(".coachmarks-popover") && container.contains(active);
+    // The engine ignores Previous while a step waits for its target.
     if (activeIndex > 0 && inThisTour && !store.getSnapshot().waitDispose) {
-      previousFromByStore.set(store, { seqId, index: activeIndex });
+      previousToByStore.set(store, { seqId, index: activeIndex - 1 });
     } else {
-      previousFromByStore.delete(store);
+      previousToByStore.delete(store);
     }
     store.getSnapshot().movePrevious();
   };
@@ -503,9 +505,9 @@ function PopoverContent({
   // focus to Next unless the user moved it.
   useEffect(() => {
     if (!isPrimary || !popoverEl) return;
-    const from = previousFromByStore.get(store);
-    previousFromByStore.delete(store);
-    if (!from || from.seqId !== seqId || from.index === activeIndex) return;
+    const to = previousToByStore.get(store);
+    previousToByStore.delete(store);
+    if (!to || to.seqId !== seqId || to.index !== activeIndex) return;
     if (!focusNone) return;
     const active = document.activeElement;
     if (active === null || active === document.body) {
@@ -519,7 +521,7 @@ function PopoverContent({
   // Iframe focus pull-out — re-runs on every step transition (activeIndex) so a tour that
   // moves through plugin-iframe contexts keeps document-level keydown listeners live.
   const pullFocusFromIframe = opts.pullFocusFromIframe ?? true;
-  // The step (`seqId:activeIndex`) whose start pulled focus into the popover, or null.
+  // The step (`seqId:activeIndex`) whose start pulled focus into the dialog, or null.
   const focusPulledForStep = useRef<string | null>(null);
   useEffect(() => {
     if (!popoverEl) return;
@@ -540,7 +542,13 @@ function PopoverContent({
     spec.popover?.description && parseMarkdown
       ? markdownToPlainText(spec.popover.description)
       : spec.popover?.description;
-  const announcement = [spec.popover?.title, announcedDescription]
+  const title = spec.popover?.title;
+  // A period after an unpunctuated title makes a screen reader pause before the description.
+  const announcedTitle =
+    title && announcedDescription && !/[.!?:;]\s*$/.test(title)
+      ? `${title}.`
+      : title;
+  const announcement = [announcedTitle, announcedDescription]
     .filter(Boolean)
     .join(" ");
   const [liveText, setLiveText] = useState("");
@@ -548,10 +556,18 @@ function PopoverContent({
     if (!announceSteps) return;
     setLiveText("");
     const key = stepKey;
+    let clearTimer: number | undefined;
     const timer = window.setTimeout(() => {
       if (focusPulledForStep.current !== key) setLiveText(announcement);
+      clearTimer = window.setTimeout(
+        () => setLiveText(""),
+        ANNOUNCEMENT_LIFETIME_MS,
+      );
     }, 100);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(clearTimer);
+    };
   }, [announceSteps, announcement, stepKey]);
 
   // initialFocus — runs on every step transition and on initial popover mount.
